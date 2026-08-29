@@ -22,7 +22,7 @@ export function createServer() {
     return c.json({
       status: "ok",
       timestamp: new Date().toISOString(),
-      service: "birthday-tg-bot-web3",
+      service: "birthday-tg-bot",
     });
   });
 
@@ -74,19 +74,37 @@ export function createServer() {
   // Mount Application REST API (Protected routes)
   app.route("/api", appRoutes);
 
-  // Serve Web3 Web App HTML Frontend
-  const clientHtmlPath = path.resolve(__dirname, "../client/index.html");
+  // Serve Web App HTML Frontend
+  const getHtmlContent = (): string => {
+    const candidates = [
+      path.resolve(process.cwd(), "public/index.html"),
+      path.resolve(process.cwd(), "src/client/index.html"),
+      path.resolve(__dirname, "../client/index.html"),
+      path.resolve(__dirname, "../../public/index.html"),
+      path.resolve(__dirname, "../public/index.html"),
+    ];
+
+    for (const p of candidates) {
+      try {
+        if (fs.existsSync(p)) {
+          return fs.readFileSync(p, "utf-8");
+        }
+      } catch {}
+    }
+    throw new Error("Frontend index.html not found");
+  };
+
   let cachedHtml: string | null = null;
 
   const serveApp = (c: any) => {
     try {
       if (!cachedHtml || env.NODE_ENV === "development") {
-        cachedHtml = fs.readFileSync(clientHtmlPath, "utf-8");
+        cachedHtml = getHtmlContent();
       }
       return c.html(cachedHtml);
     } catch (e) {
-      logger.error("Failed to load Web3 frontend HTML:", e);
-      return c.text("Web3 App Frontend loading error", 500);
+      logger.error("Failed to load frontend HTML:", e);
+      return c.text("App Frontend loading error", 500);
     }
   };
 
