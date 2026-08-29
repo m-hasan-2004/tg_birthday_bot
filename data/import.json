@@ -1,0 +1,41 @@
+{
+  "users": [
+    {
+      "telegramId": "5138117035",
+      "name": "Owner",
+      "timezone": "Europe/Berlin",
+      "role": "owner",
+      "people": [
+        {
+          "name": "John Doe",
+          "birthday": "09-14",
+          "notes": [
+            "Works with Sarah at the office.",
+            "Loves cycling and espresso."
+          ],
+          "birthdayReminders": [
+            { "daysBefore": 30, "reminderTime": "09:00", "enabled": true },
+            { "daysBefore": 7, "reminderTime": "09:00", "enabled": true },
+            { "daysBefore": 1, "reminderTime": "09:00", "enabled": true },
+            { "daysBefore": 0, "reminderTime": "09:00", "enabled": true }
+          ]
+        },
+        {
+          "name": "Sarah Connor",
+          "birthday": "11-28",
+          "notes": [
+            "Team Lead"
+          ]
+        }
+      ],
+      "reminders": [
+        {
+          "title": "Send quarterly team greeting",
+          "scheduledAt": "2026-09-01T09:00:00.000Z",
+          "repeatType": "monthly",
+          "personName": "Sarah Connor"
+        }
+      ]
+    }
+  ]
+}

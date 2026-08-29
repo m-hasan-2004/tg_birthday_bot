@@ -1,0 +1,57 @@
+{
+  "name": "birthday-tg-bot",
+  "version": "1.0.0",
+  "description": "Telegram & Web App Birthday & Reminder Assistant",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "data:import": "tsx scripts/import-data.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/dates.test.ts tests/validation.test.ts",
+    "test:integration": "vitest run tests/services.test.ts tests/birthday.test.ts tests/notification.test.ts tests/security.test.ts",
+    "test:persistence": "vitest run tests/persistence.test.ts",
+    "test:admin": "vitest run tests/admin.test.ts",
+    "test:sync": "vitest run tests/sync.test.ts",
+    "test:reminders": "vitest run tests/reminder_flow.test.ts tests/reminders_display.test.ts",
+    "test:e2e": "vitest run tests/e2e.test.ts",
+    "test:all": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "birthday",
+    "reminders",
+    "serverless",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.4",
+    "grammy": "^1.34.0",
+    "hono": "^4.6.19",
+    "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.5.0",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.13.4",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.6"
+  }
+}
