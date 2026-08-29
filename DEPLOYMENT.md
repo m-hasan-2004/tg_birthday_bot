@@ -930,98 +930,58 @@ Telegram will provide the Mini App entry point for the bot.
 
 ---
 
-# 16. Configure Scheduled Reminders
+# 16. Configure Scheduled Reminders (Free 15-Minute Cron)
 
-The application uses:
-
-```text
-/api/cron
-```
-
-to process:
-
+The application uses `/api/cron` to process:
 * due reminders
 * birthday notifications
 * scheduled alerts
 
-Create or update:
+### Vercel Hobby Plan Compatibility
 
-```text
-vercel.json
-```
+> [!NOTE]
+> Vercel's Hobby (Free) plan limits native Vercel crons to **once per day**. To keep reminders accurate every 15 minutes at **$0/month**, we use an external free cron trigger.
 
-with:
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "*/15 * * * *"
-    }
-  ]
-}
-```
-
-This schedules the endpoint every 15 minutes.
+We provide two easy zero-cost options:
 
 ---
 
-## 16.1 Commit the Cron Configuration
+### Option 1: Built-in GitHub Actions Cron (Recommended — $0 & Zero Third-Party Signup)
 
-Run:
+The repository includes a ready-to-use GitHub Actions workflow at [`.github/workflows/cron.yml`](file:///.github/workflows/cron.yml) that runs automatically every 15 minutes.
 
-```bash
-git add vercel.json
-```
-
-Then:
-
-```bash
-git commit -m "Configure reminder cron"
-```
-
-Push:
-
-```bash
-git push
-```
-
-Vercel will automatically deploy the new commit.
+1. Go to your GitHub repository -> **Settings** -> **Secrets and variables** -> **Actions**.
+2. Click **New repository secret** and add:
+   * **`APP_URL`**: Your deployed Vercel URL (e.g. `https://tg-birthday-bot.vercel.app`)
+   * **`CRON_SECRET`**: The same `CRON_SECRET` string configured in your Vercel environment variables.
+3. Go to the **Actions** tab in GitHub and verify the workflow is active. It will trigger `/api/cron` every 15 minutes automatically with full security.
 
 ---
 
-## 16.2 Cron Security
+### Option 2: External Free Cron Service (e.g. Cron-Job.org)
 
-The application should protect the cron endpoint from arbitrary public requests.
+If you prefer an external monitoring service:
 
-The project provides:
-
-```env
-CRON_SECRET=...
-```
-
-If the application's existing `/api/cron` implementation expects a bearer secret, configure it according to that implementation.
-
-Do not expose the cron secret to frontend JavaScript.
-
-Do not place the cron secret in publicly accessible files.
+1. Create a free account at [cron-job.org](https://cron-job.org/).
+2. Create a new cron job:
+   * **Title**: `Birthday Reminders Trigger`
+   * **URL**: `https://YOUR-APP.vercel.app/api/cron`
+   * **Schedule**: Every 15 minutes (`*/15 * * * *`)
+   * **Request Method**: `POST` (or `GET`)
+   * **Headers**: Add header `Authorization: Bearer YOUR_CRON_SECRET` (or append `?secret=YOUR_CRON_SECRET` to URL).
+3. Save the job.
 
 ---
 
-## 16.3 Cron Frequency
+## 16.1 Cron Security
 
-The example configuration runs every 15 minutes:
+The `/api/cron` endpoint validates requests:
 
-```text
-*/15 * * * *
+```typescript
+const isAuthorized = authHeader === `Bearer ${env.CRON_SECRET}` || querySecret === env.CRON_SECRET;
 ```
 
-This means the application checks for due reminders approximately every 15 minutes.
-
-A reminder scheduled for a particular minute may therefore be processed during the next cron execution rather than exactly at that minute.
-
-If exact-to-the-minute notification delivery becomes a requirement, the scheduling architecture should be reconsidered.
+Unauthorized requests receive `401 Unauthorized`. Keep `CRON_SECRET` secret and configure it in your Vercel environment variables and scheduler settings.
 
 ---
 
