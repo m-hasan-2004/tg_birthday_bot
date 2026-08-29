@@ -20,28 +20,6 @@ export const users = pgTable(
   ]
 );
 
-export const wallets = pgTable(
-  "wallets",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    address: varchar("address", { length: 64 }).notNull(),
-    chain: varchar("chain", { length: 32 }).notNull().default("ethereum"),
-    isVerified: boolean("is_verified").notNull().default(false),
-    verificationNonce: varchar("verification_nonce", { length: 64 }),
-    nonceExpiresAt: timestamp("nonce_expires_at", { withTimezone: true }),
-    verifiedAt: timestamp("verified_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    index("wallets_user_id_idx").on(table.userId),
-    index("wallets_address_idx").on(table.address),
-  ]
-);
-
 export const people = pgTable(
   "people",
   {

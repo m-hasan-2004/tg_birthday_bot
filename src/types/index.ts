@@ -23,19 +23,6 @@ export interface User {
   updatedAt: Date;
 }
 
-export interface Wallet {
-  id: string;
-  userId: string;
-  address: string;
-  chain: string;
-  isVerified: boolean;
-  verificationNonce: string | null;
-  nonceExpiresAt: Date | null;
-  verifiedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Person {
   id: string;
   userId: string;
@@ -98,6 +85,4 @@ export interface AuthSessionPayload {
   userId: string;
   telegramId?: string;
   role?: UserRole;
-  walletAddress?: string;
-  isVerified?: boolean;
 }
