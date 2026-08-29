@@ -937,28 +937,32 @@ The application uses `/api/cron` to process:
 * birthday notifications
 * scheduled alerts
 
-### Vercel Hobby Plan Compatibility
+### 🚀 Fixed: Vercel Free Setup & 15-Minute Cron
 
-> [!NOTE]
-> Vercel's Hobby (Free) plan limits native Vercel crons to **once per day**. To keep reminders accurate every 15 minutes at **$0/month**, we use an external free cron trigger.
-
-We provide two easy zero-cost options:
+#### 📋 What Was Implemented:
+* **Removed Vercel Cron Limitation from `vercel.json`**:
+  Removed the `crons` block from `vercel.json` so Vercel Hobby will never reject builds or hit the once-per-day limit.
+* **Added Automated 15-Minute Free Scheduler**:
+  Created `.github/workflows/cron.yml` which runs automatically on GitHub Actions every 15 minutes (`*/15 * * * *`) with $0 cost and no third-party subscriptions.
+  Authenticates directly with `/api/cron` using your `CRON_SECRET`.
+* **Updated Documentation**:
+  Added complete setup steps to Section 16 of `DEPLOYMENT.md`.
+* **Pushed to GitHub**:
+  Commit `bd2ff3e` is pushed to main on [GitHub](https://github.com/m-hasan-2004/tg_birthday_bot).
 
 ---
 
-### Option 1: Built-in GitHub Actions Cron (Recommended — $0 & Zero Third-Party Signup)
+### ⚙️ How to Activate the 15-Minute Trigger on GitHub:
 
-The repository includes a ready-to-use GitHub Actions workflow at [`.github/workflows/cron.yml`](file:///.github/workflows/cron.yml) that runs automatically every 15 minutes.
-
-1. Go to your GitHub repository -> **Settings** -> **Secrets and variables** -> **Actions**.
-2. Click **New repository secret** and add:
-   * **`APP_URL`**: Your deployed Vercel URL (e.g. `https://tg-birthday-bot.vercel.app`)
+1. Go to your GitHub repository: [tg_birthday_bot/settings/secrets/actions](https://github.com/m-hasan-2004/tg_birthday_bot/settings/secrets/actions)
+2. Add two repository secrets:
+   * **`APP_URL`**: Your Vercel deployment URL (e.g. `https://your-app.vercel.app`)
    * **`CRON_SECRET`**: The same `CRON_SECRET` string configured in your Vercel environment variables.
-3. Go to the **Actions** tab in GitHub and verify the workflow is active. It will trigger `/api/cron` every 15 minutes automatically with full security.
+3. Your reminders will now be checked and dispatched every 15 minutes completely free.
 
 ---
 
-### Option 2: External Free Cron Service (e.g. Cron-Job.org)
+### Alternative: External Free Cron Service (e.g. Cron-Job.org)
 
 If you prefer an external monitoring service:
 
