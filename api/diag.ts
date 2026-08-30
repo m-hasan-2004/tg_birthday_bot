@@ -1,60 +1,34 @@
 export const config = { runtime: 'nodejs', maxDuration: 25 };
 
-export default async function handler(req: any, res: any) {
-  const results: string[] = [];
+export default async function handler(req, res) {
+  const results = [];
   const start = Date.now();
 
-  function log(msg: string) {
-    results.push([ms] );
-  }
-
   try {
-    log('START');
+    results.push('importing hono...');
+    const h = await import('hono');
+    results.push('hono OK: ' + Object.keys(h).join(','));
 
-    log('importing hono...');
-    await import('hono');
-    log('hono OK');
+    results.push('importing grammy...');
+    const g = await import('grammy');
+    results.push('grammy OK: ' + typeof g.Bot);
 
-    log('importing grammy...');
-    await import('grammy');
-    log('grammy OK');
+    results.push('importing @neondatabase/serverless...');
+    const n = await import('@neondatabase/serverless');
+    results.push('neon OK: ' + typeof n.neon);
 
-    log('importing @neondatabase/serverless...');
-    await import('@neondatabase/serverless');
-    log('neon OK');
+    results.push('importing dotenv...');
+    const d = await import('dotenv');
+    results.push('dotenv OK');
 
-    log('importing postgres...');
-    await import('postgres');
-    log('postgres OK');
+    results.push('importing zod...');
+    const z = await import('zod');
+    results.push('zod OK');
 
-    log('importing drizzle-orm/neon-http...');
-    await import('drizzle-orm/neon-http');
-    log('drizzle neon OK');
-
-    log('importing drizzle-orm/postgres-js...');
-    await import('drizzle-orm/postgres-js');
-    log('drizzle pg OK');
-
-    log('importing ../src/config/env.js...');
-    await import('../src/config/env.js');
-    log('env OK');
-
-    log('importing ../src/db/index.js...');
-    await import('../src/db/index.js');
-    log('db OK');
-
-    log('importing ../src/bot/bot.js...');
-    await import('../src/bot/bot.js');
-    log('bot OK');
-
-    log('importing ../src/api/server.js...');
-    await import('../src/api/server.js');
-    log('server OK');
-
-    log('ALL DONE');
+    results.push('ALL DONE in ' + (Date.now() - start) + 'ms');
     res.status(200).json({ ok: true, results });
-  } catch (err: any) {
-    log(ERROR: );
-    res.status(500).json({ ok: false, results, error: err.message, stack: err.stack });
+  } catch (err) {
+    results.push('ERROR: ' + (err && err.message));
+    res.status(500).json({ ok: false, results, error: err && err.message, stack: err && err.stack });
   }
 }
