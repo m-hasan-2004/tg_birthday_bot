@@ -26,9 +26,9 @@ export class BirthdayService {
       .where(eq(birthdayReminders.personId, personId))
       .orderBy(birthdayReminders.daysBefore);
 
-    // If no reminders exist yet, seed default offsets (30, 14, 7, 3, 1, 0)
+    // If no reminders exist yet, seed default offset (0 - on the day)
     if (results.length === 0) {
-      const defaultOffsets = [30, 14, 7, 3, 1, 0];
+      const defaultOffsets = [0];
       const newRows = defaultOffsets.map((daysBefore) => ({
         personId,
         daysBefore,

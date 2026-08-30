@@ -212,11 +212,9 @@ export function formatReminderDate(date: Date, userTimezone: string = "Asia/Tehr
 
   let dateStr: string;
   if (dt.hasSame(now, "day")) {
-    dateStr = "Today";
+    dateStr = "Today (" + dt.toFormat("LLLL d, yyyy") + ")";
   } else if (dt.hasSame(now.plus({ days: 1 }), "day")) {
-    dateStr = "Tomorrow";
-  } else if (dt.year === now.year) {
-    dateStr = dt.toFormat("LLLL d");
+    dateStr = "Tomorrow (" + dt.toFormat("LLLL d, yyyy") + ")";
   } else {
     dateStr = dt.toFormat("LLLL d, yyyy");
   }

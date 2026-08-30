@@ -513,9 +513,25 @@
 
     <!-- View 3: Reminders -->
     <section id="view-reminders" class="tab-view hidden">
+      <!-- Templates Card -->
+      <div class="glass-card" style="margin-bottom: 12px;">
+        <div class="card-header" style="margin-bottom: 8px;">
+          <div class="card-title" style="font-size: 0.95rem;">📋 Birthday Reminder Templates</div>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Select a preset to quickly apply a reminder to any contact:</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(0, 'On the day')">🎯 On the day (0d)</button>
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(1, '1 day before')">⏰ 1 day before</button>
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(3, '3 days before')">📅 3 days before</button>
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(7, '1 week before')">🗓️ 1 week before</button>
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(14, '2 weeks before')">⏳ 2 weeks before</button>
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateWizard(30, '1 month before')">🗓️ 1 month before</button>
+        </div>
+      </div>
+
       <div class="glass-card">
         <div class="card-header">
-          <div class="card-title">⏰ Reminders</div>
+          <div class="card-title">⏰ Active Reminders</div>
           <button class="btn btn-sm" onclick="openReminderWizard()">➕ Create Reminder</button>
         </div>
         <div id="reminders-list-container" class="item-list"></div>
@@ -811,11 +827,11 @@
         }
       }
 
-      if (tabName === "dashboard") loadDashboard();
-      if (tabName === "people") loadPeople();
-      if (tabName === "reminders") loadReminders();
-      if (tabName === "profile") loadProfile();
-      if (tabName === "admin") loadAdminDashboard();
+      if (tabName === "dashboard") loadDashboard().catch(e => console.error("Error loading dashboard:", e));
+      if (tabName === "people") loadPeople().catch(e => console.error("Error loading people:", e));
+      if (tabName === "reminders") loadReminders().catch(e => console.error("Error loading reminders:", e));
+      if (tabName === "profile") loadProfile().catch(e => console.error("Error loading profile:", e));
+      if (tabName === "admin") loadAdminDashboard().catch(e => console.error("Error loading admin:", e));
     };
 
     async function loadDashboard() {
@@ -1154,6 +1170,57 @@
       selectWizardPerson(p.id, p.name, p.birthday || "");
     };
 
+    // TEMPLATE WIZARD (Quick single-click preset application)
+    window.openTemplateWizard = async function(daysBefore, label) {
+      try {
+        const peopleRes = await apiRequest("/api/people");
+        const people = peopleRes.people || [];
+        const peopleWithBday = people.filter(p => p.birthday);
+
+        if (peopleWithBday.length === 0) {
+          document.getElementById("modal-body").innerHTML = `
+            <h3 style="margin-bottom: 8px;">📋 Template: ${escapeHtml(label)}</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">None of your contacts have a birthday set yet.</p>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-full" onclick="openAddPersonModal()">➕ Add Contact First</button>
+              <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
+            </div>
+          `;
+          document.getElementById("modal-backdrop").classList.remove("hidden");
+          return;
+        }
+
+        document.getElementById("modal-body").innerHTML = `
+          <h3 style="margin-bottom: 4px;">📋 Template: ${escapeHtml(label)}</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Choose a contact to activate <b>${escapeHtml(label)}</b> reminder:</p>
+          <div class="item-list" style="max-height: 220px; overflow-y: auto; margin-bottom: 14px;">
+            ${peopleWithBday.map(p => `
+              <div class="list-item" style="padding: 10px 14px; cursor: pointer;" onclick="applyTemplateToPerson('${p.id}', ${daysBefore}, '${escapeHtml(p.name)}', '${escapeHtml(label)}')">
+                <div class="item-title">👤 ${escapeHtml(p.name)}</div>
+                <div class="item-subtitle">🎂 ${escapeHtml(p.formattedBirthday)}</div>
+              </div>
+            `).join("")}
+          </div>
+          <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
+        `;
+        document.getElementById("modal-backdrop").classList.remove("hidden");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    window.applyTemplateToPerson = async function(personId, daysBefore, personName, label) {
+      try {
+        await apiRequest(`/api/people/${personId}/birthday-reminders/custom`, "POST", { daysBefore });
+        showToast(`Activated ${label} for ${personName}!`);
+        closeModal();
+        await loadReminders();
+        await loadDashboard();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
     window.selectWizardPerson = function(personId, personName, birthday) {
       if (!birthday) {
         document.getElementById("modal-body").innerHTML = `
@@ -1170,13 +1237,15 @@
       document.getElementById("modal-body").innerHTML = `
         <h3 style="margin-bottom: 4px;">🎂 ${escapeHtml(personName)}</h3>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Birthday: <b>${escapeHtml(birthday)}</b></p>
-        <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 10px;">When should I remind you?</p>
+        <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 10px;">Select Reminder Presets:</p>
 
-        <div style="margin-bottom: 14px;">
-          <label class="checkbox-item"><input type="checkbox" id="wiz-off-30" checked /> <span>1 month before</span></label>
-          <label class="checkbox-item"><input type="checkbox" id="wiz-off-7" checked /> <span>1 week before</span></label>
-          <label class="checkbox-item"><input type="checkbox" id="wiz-off-1" checked /> <span>1 day before</span></label>
-          <label class="checkbox-item"><input type="checkbox" id="wiz-off-0" checked /> <span>On the day</span></label>
+        <div style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-0" checked /> <span>🎯 On the day (0 days before)</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-1" /> <span>⏰ 1 day before</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-3" /> <span>📅 3 days before</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-7" /> <span>🗓️ 1 week before</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-14" /> <span>⏳ 2 weeks before</span></label>
+          <label class="checkbox-item"><input type="checkbox" id="wiz-off-30" /> <span>🗓️ 1 month before</span></label>
         </div>
 
         <div class="input-group">
@@ -1197,16 +1266,17 @@
       btn.disabled = true;
 
       const offsets = [
-        { days: 30, checked: document.getElementById("wiz-off-30").checked },
-        { days: 7, checked: document.getElementById("wiz-off-7").checked },
-        { days: 1, checked: document.getElementById("wiz-off-1").checked },
-        { days: 0, checked: document.getElementById("wiz-off-0").checked },
+        { days: 0, checked: document.getElementById("wiz-off-0")?.checked },
+        { days: 1, checked: document.getElementById("wiz-off-1")?.checked },
+        { days: 3, checked: document.getElementById("wiz-off-3")?.checked },
+        { days: 7, checked: document.getElementById("wiz-off-7")?.checked },
+        { days: 14, checked: document.getElementById("wiz-off-14")?.checked },
+        { days: 30, checked: document.getElementById("wiz-off-30")?.checked },
       ];
 
-      const reminderTime = document.getElementById("wiz-time").value || "09:00";
+      const reminderTime = document.getElementById("wiz-time")?.value || "09:00";
 
       try {
-        // Save offsets
         for (const o of offsets) {
           if (o.checked) {
             await apiRequest(`/api/people/${personId}/birthday-reminders/custom`, "POST", { daysBefore: o.days });

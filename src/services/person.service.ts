@@ -37,9 +37,9 @@ export class PersonService {
       });
     }
 
-    // If birthday provided, initialize default birthday reminder offsets: 30, 14, 7, 3, 1, 0 days before
+    // If birthday provided, initialize default birthday reminder offset: 0 days before (On the day)
     if (person.birthday) {
-      const defaultOffsets = [30, 14, 7, 3, 1, 0];
+      const defaultOffsets = [0];
       const bdayReminderRows = defaultOffsets.map((daysBefore) => ({
         personId: person.id,
         daysBefore,
@@ -123,7 +123,7 @@ export class PersonService {
           .where(eq(birthdayReminders.personId, personId));
 
         if (existingOffsets.length === 0) {
-          const defaultOffsets = [30, 14, 7, 3, 1, 0];
+          const defaultOffsets = [0];
           await this.database.insert(birthdayReminders).values(
             defaultOffsets.map((daysBefore) => ({
               personId,
