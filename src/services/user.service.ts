@@ -54,7 +54,13 @@ export class UserService {
       .limit(1);
 
     if (result.length === 0) return null;
-    return result[0] as unknown as User;
+    const user = result[0] as unknown as User;
+    const computedRole = this.resolveUserRole(user.telegramId);
+    if (computedRole !== user.role && (computedRole === "owner" || computedRole === "admin")) {
+      await this.database.update(users).set({ role: computedRole }).where(eq(users.id, user.id));
+      user.role = computedRole;
+    }
+    return user;
   }
 
   async createUser(data: {

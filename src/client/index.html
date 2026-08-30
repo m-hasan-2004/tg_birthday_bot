@@ -640,31 +640,41 @@
 
           // 1. If inside Telegram WebApp, authenticate with initData
           if (tg && tg.initData) {
-            const res = await fetch("/api/auth/telegram", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ initData: tg.initData }),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (data.token) {
-              authToken = data.token;
-              localStorage.setItem("auth_token", authToken);
-              currentUser = data.user;
-              return authToken;
+            try {
+              const res = await fetch("/api/auth/telegram", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData: tg.initData }),
+                signal: AbortSignal.timeout(12000),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (data.token) {
+                authToken = data.token;
+                localStorage.setItem("auth_token", authToken);
+                currentUser = data.user;
+                return authToken;
+              }
+            } catch (e) {
+              console.warn("Telegram initData auth error:", e);
             }
           }
 
           // 2. If token exists in localStorage, verify it by calling /api/dashboard
           if (authToken) {
-            const res = await fetch("/api/dashboard", {
-              headers: { "Authorization": `Bearer ${authToken}` },
-            });
-            if (res.ok) {
-              const data = await res.json().catch(() => ({}));
-              if (data.user) {
-                currentUser = data.user;
-                return authToken;
+            try {
+              const res = await fetch("/api/dashboard", {
+                headers: { "Authorization": `Bearer ${authToken}` },
+                signal: AbortSignal.timeout(12000),
+              });
+              if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.user) {
+                  currentUser = data.user;
+                  return authToken;
+                }
               }
+            } catch (e) {
+              console.warn("Token verification error:", e);
             }
             // Token is expired or invalid, clear it
             authToken = "";
@@ -673,21 +683,29 @@
           }
 
           // 3. Fallback for browser testing (dev-login)
-          const res = await fetch("/api/auth/dev-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              telegramId: "5138117035",
-              name: "Owner",
-              role: "owner"
-            }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (data.token) {
-            authToken = data.token;
-            localStorage.setItem("auth_token", authToken);
-            currentUser = data.user;
-            return authToken;
+          try {
+            const res = await fetch("/api/auth/dev-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                telegramId: "5138117035",
+                name: "Owner",
+                role: "owner"
+              }),
+              signal: AbortSignal.timeout(12000),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (data.token) {
+              authToken = data.token;
+              localStorage.setItem("auth_token", authToken);
+              currentUser = data.user;
+              return authToken;
+            } else if (data.error) {
+              showToast(`Auth error: ${data.error}`, "error");
+            }
+          } catch (e) {
+            console.error("Dev login error:", e);
+            showToast("Server connection timeout (12s). Please check connection.", "error");
           }
         } catch (e) {
           console.error("Authentication error:", e);
@@ -710,7 +728,7 @@
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const options = { method, headers };
+      const options = { method, headers, signal: AbortSignal.timeout(12000) };
       if (body) options.body = JSON.stringify(body);
 
       try {
@@ -745,6 +763,11 @@
         }
         return data;
       } catch (err) {
+        if (err.name === "TimeoutError" || err.name === "AbortError") {
+          const timeoutErr = new Error(`Request timed out (12s) on ${endpoint}. Server or database is unreachable.`);
+          console.error(timeoutErr);
+          throw timeoutErr;
+        }
         console.error(`API Error on [${method}] ${endpoint}:`, err);
         throw err;
       }
