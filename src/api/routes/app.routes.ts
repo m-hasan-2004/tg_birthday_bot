@@ -16,6 +16,17 @@ type AppEnv = {
 
 export const appRoutes = new Hono<AppEnv>();
 
+appRoutes.onError((err, c) => {
+  logger.error(`App Route Error on [${c.req.method}] ${c.req.path}:`, err);
+  return c.json({
+    error: err.message || "Internal server error",
+    details: String(err),
+    stack: err.stack,
+    path: c.req.path,
+    method: c.req.method,
+  }, 500);
+});
+
 // Auth Middleware for all application API routes
 appRoutes.use("*", async (c, next) => {
   const authHeader = c.req.header("Authorization") || c.req.header("authorization");

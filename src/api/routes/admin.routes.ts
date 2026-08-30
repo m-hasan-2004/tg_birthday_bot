@@ -12,6 +12,17 @@ type AdminEnv = {
 
 export const adminRoutes = new Hono<AdminEnv>();
 
+adminRoutes.onError((err, c) => {
+  logger.error(`Admin Route Error on [${c.req.method}] ${c.req.path}:`, err);
+  return c.json({
+    error: err.message || "Internal server error",
+    details: String(err),
+    stack: err.stack,
+    path: c.req.path,
+    method: c.req.method,
+  }, 500);
+});
+
 // Admin Auth Middleware
 adminRoutes.use("*", async (c, next) => {
   const authHeader = c.req.header("Authorization");
