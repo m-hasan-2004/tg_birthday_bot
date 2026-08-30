@@ -4,31 +4,47 @@ export default async function handler(req, res) {
   const results = [];
   const start = Date.now();
 
+  function log(msg) { results.push('[' + (Date.now() - start) + 'ms] ' + msg); }
+
   try {
-    results.push('importing hono...');
-    const h = await import('hono');
-    results.push('hono OK: ' + Object.keys(h).join(','));
+    log('3rd party packages OK (tested separately)');
 
-    results.push('importing grammy...');
-    const g = await import('grammy');
-    results.push('grammy OK: ' + typeof g.Bot);
+    log('importing ../src/config/env.js...');
+    const envMod = await import('../src/config/env.js');
+    log('env OK, keys: ' + Object.keys(envMod.env || {}).join(','));
 
-    results.push('importing @neondatabase/serverless...');
-    const n = await import('@neondatabase/serverless');
-    results.push('neon OK: ' + typeof n.neon);
+    log('importing ../src/utils/logger.js...');
+    await import('../src/utils/logger.js');
+    log('logger OK');
 
-    results.push('importing dotenv...');
-    const d = await import('dotenv');
-    results.push('dotenv OK');
+    log('importing ../src/db/schema.js...');
+    await import('../src/db/schema.js');
+    log('schema OK');
 
-    results.push('importing zod...');
-    const z = await import('zod');
-    results.push('zod OK');
+    log('importing ../src/db/index.js...');
+    await import('../src/db/index.js');
+    log('db OK');
 
-    results.push('ALL DONE in ' + (Date.now() - start) + 'ms');
+    log('importing ../src/services/user.service.js...');
+    await import('../src/services/user.service.js');
+    log('user.service OK');
+
+    log('importing ../src/bot/bot.js...');
+    await import('../src/bot/bot.js');
+    log('bot OK');
+
+    log('importing ../src/client/html.js...');
+    await import('../src/client/html.js');
+    log('html OK');
+
+    log('importing ../src/api/server.js...');
+    const serverMod = await import('../src/api/server.js');
+    log('server OK, exports: ' + Object.keys(serverMod).join(','));
+
+    log('ALL DONE');
     res.status(200).json({ ok: true, results });
   } catch (err) {
-    results.push('ERROR: ' + (err && err.message));
+    log('ERROR: ' + (err && err.message));
     res.status(500).json({ ok: false, results, error: err && err.message, stack: err && err.stack });
   }
 }
