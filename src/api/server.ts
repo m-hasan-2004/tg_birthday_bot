@@ -1,8 +1,5 @@
 import { Hono } from "hono";
 import { webhookCallback } from "grammy";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { bot } from "../bot/bot.js";
 import { notificationService } from "../services/notification.service.js";
 import { authRoutes } from "./routes/auth.routes.js";
@@ -11,9 +8,6 @@ import { adminRoutes } from "./routes/admin.routes.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import { HTML_CONTENT } from "../client/html.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export function createServer() {
   const app = new Hono();
