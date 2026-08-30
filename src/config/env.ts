@@ -3,7 +3,7 @@ import { z } from "zod";
 
 dotenv.config();
 
-const DEFAULT_NEON_DB = "postgresql://neondb_owner:npg_GY67EDWONsjg@ep-wispy-wildflower-b1gsxcmj.c-5.eu-central-1.aws.neon.tech/neondb?sslmode=require";
+const DEFAULT_NEON_DB = "postgresql://default:default@default/neondb?sslmode=require";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

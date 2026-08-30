@@ -49,7 +49,13 @@ export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContex
 
     if (telegramId) {
       try {
-        const user = await userService.findByTelegramId(telegramId);
+        let user = await userService.findByTelegramId(telegramId);
+        if (!user) {
+          user = await userService.createUser({
+            telegramId,
+            name: ctx.from?.first_name || "Friend",
+          });
+        }
         if (user) {
           if (user.isDisabled) {
             await ctx.reply("⛔ <b>Your account has been disabled by an administrator.</b>", {
@@ -60,7 +66,7 @@ export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContex
           ctx.user = user;
         }
       } catch (dbErr) {
-        logger.error(`Database error fetching user for telegramId ${telegramId}`, dbErr);
+        logger.error(`Database error fetching/creating user for telegramId ${telegramId}`, dbErr);
       }
     }
 

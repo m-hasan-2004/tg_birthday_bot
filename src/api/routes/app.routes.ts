@@ -7,6 +7,8 @@ import { reminderService } from "../../services/reminder.service.js";
 import { birthdayService } from "../../services/birthday.service.js";
 import { getNextBirthday, formatBirthday, formatReminderDate } from "../../utils/dates.js";
 import { logger } from "../../utils/logger.js";
+import { DateTime } from "luxon";
+import { env } from "../../config/env.js";
 
 type AppEnv = {
   Variables: {
@@ -267,7 +269,7 @@ appRoutes.get("/reminders", async (c) => {
   const userId = c.get("userId");
   const remindersList = await reminderService.listUpcomingRemindersByUser(userId);
   const user = await userService.findById(userId);
-  const tz = user?.timezone || "Europe/Berlin";
+  const tz = user?.timezone || env.DEFAULT_TIMEZONE || "Asia/Tehran";
 
   const formatted = remindersList.map((r) => {
     const { dateStr, timeStr } = formatReminderDate(r.scheduledAt, tz);
@@ -288,9 +290,26 @@ appRoutes.post("/reminders", async (c) => {
     return c.json({ error: "Title and scheduledAt are required" }, 400);
   }
 
+  const user = await userService.findById(userId);
+  const tz = user?.timezone || env.DEFAULT_TIMEZONE || "Asia/Tehran";
+
+  let targetDate: Date;
+  if (typeof scheduledAt === "string") {
+    // If it's an ISO datetime string like "2026-09-14T10:00" without timezone
+    if (scheduledAt.includes("T") && !scheduledAt.endsWith("Z") && !scheduledAt.includes("+") && !scheduledAt.includes("-", 10)) {
+      const dt = DateTime.fromISO(scheduledAt, { zone: tz });
+      targetDate = dt.isValid ? dt.toJSDate() : new Date(scheduledAt);
+    } else {
+      const dt = DateTime.fromISO(scheduledAt).setZone(tz);
+      targetDate = dt.isValid ? dt.toJSDate() : new Date(scheduledAt);
+    }
+  } else {
+    targetDate = new Date(scheduledAt);
+  }
+
   const reminder = await reminderService.createReminder(userId, {
     title,
-    scheduledAt: new Date(scheduledAt),
+    scheduledAt: targetDate,
     personId: personId || null,
     repeatType: repeatType || "none",
   });

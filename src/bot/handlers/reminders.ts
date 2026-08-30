@@ -15,14 +15,24 @@ import { formatReminderDate, formatBirthday, isValidTimezone, RecurrenceType } f
 
 export const remindersHandler = new Composer<BotContext>();
 
-// 1. Reminders List
-remindersHandler.callbackQuery("menu_reminders", async (ctx) => {
-  if (!ctx.user) return;
-  await ctx.answerCallbackQuery();
-  await userService.clearSessionState(ctx.user.id);
+// 1. Reminders List (Shared logic for callback and command)
+async function renderReminders(ctx: BotContext) {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
 
-  const remindersList = await reminderService.listUpcomingRemindersByUser(ctx.user.id);
-  const userZone = isValidTimezone(ctx.user.timezone) ? ctx.user.timezone : "Europe/Berlin";
+  let user = ctx.user;
+  if (!user) {
+    user = (await userService.findByTelegramId(telegramId)) || (await userService.createUser({
+      telegramId,
+      name: ctx.from?.first_name || "Friend",
+    }));
+    ctx.user = user;
+  }
+
+  await userService.clearSessionState(user.id);
+
+  const remindersList = await reminderService.listUpcomingRemindersByUser(user.id);
+  const userZone = isValidTimezone(user.timezone) ? user.timezone : "Asia/Tehran";
 
   if (remindersList.length === 0) {
     const emptyText =
@@ -78,6 +88,15 @@ remindersHandler.callbackQuery("menu_reminders", async (ctx) => {
       reply_markup: keyboard,
     });
   }
+}
+
+remindersHandler.callbackQuery("menu_reminders", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  await renderReminders(ctx);
+});
+
+remindersHandler.command("reminders", async (ctx) => {
+  await renderReminders(ctx);
 });
 
 // 2. View Reminder Details

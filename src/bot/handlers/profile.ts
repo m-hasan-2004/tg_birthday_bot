@@ -11,20 +11,30 @@ import { formatBirthday } from "../../utils/dates.js";
 
 export const profileHandler = new Composer<BotContext>();
 
-// View Profile
-profileHandler.callbackQuery("menu_profile", async (ctx) => {
-  if (!ctx.user) return;
-  await ctx.answerCallbackQuery();
-  await userService.clearSessionState(ctx.user.id);
+// View Profile Handler (Shared logic for callback and command)
+async function renderProfile(ctx: BotContext) {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
 
-  const user = (await userService.findById(ctx.user.id)) || ctx.user;
-  const birthdayStr = user.birthday ? formatBirthday(user.birthday) : "Not set";
-  const infoStr = user.additionalInfo ? user.additionalInfo : "None";
-  const timezoneStr = user.timezone || "Europe/Berlin";
+  let user = ctx.user;
+  if (!user) {
+    user = (await userService.findByTelegramId(telegramId)) || (await userService.createUser({
+      telegramId,
+      name: ctx.from?.first_name || "Friend",
+    }));
+    ctx.user = user;
+  }
+
+  await userService.clearSessionState(user.id);
+
+  const freshUser = (await userService.findById(user.id)) || user;
+  const birthdayStr = freshUser.birthday ? formatBirthday(freshUser.birthday) : "Not set";
+  const infoStr = freshUser.additionalInfo ? freshUser.additionalInfo : "None";
+  const timezoneStr = freshUser.timezone || "Asia/Tehran";
 
   const text =
     `👤 <b>My Profile</b>\n\n` +
-    `<b>Name:</b>\n${escapeHtml(user.name)}\n\n` +
+    `<b>Name:</b>\n${escapeHtml(freshUser.name)}\n\n` +
     `<b>Birthday:</b>\n${escapeHtml(birthdayStr)}\n\n` +
     `<b>Information:</b>\n${escapeHtml(infoStr)}\n\n` +
     `<b>Timezone:</b>\n${escapeHtml(timezoneStr)}`;
@@ -40,6 +50,15 @@ profileHandler.callbackQuery("menu_profile", async (ctx) => {
       reply_markup: getProfileKeyboard(),
     });
   }
+}
+
+profileHandler.callbackQuery("menu_profile", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  await renderProfile(ctx);
+});
+
+profileHandler.command("profile", async (ctx) => {
+  await renderProfile(ctx);
 });
 
 // Edit Profile Menu

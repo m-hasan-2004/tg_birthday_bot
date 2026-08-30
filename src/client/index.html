@@ -330,6 +330,17 @@
       width: 100%;
     }
 
+    .btn-square {
+      border-radius: 8px !important;
+      padding: 6px 12px !important;
+      font-size: 0.82rem !important;
+      font-weight: 600 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 5px !important;
+    }
+
     /* Checkbox list for multi-select occasions */
     .checkbox-item {
       display: flex;
@@ -456,7 +467,12 @@
   <!-- Sticky Header -->
   <header>
     <div class="brand">
+      <span style="font-weight: 700; font-size: 1rem; letter-spacing: -0.3px;">🎂 Reminders</span>
       <span id="header-badge" class="brand-badge hidden">ADMIN</span>
+    </div>
+    <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+      <button class="btn btn-secondary btn-sm btn-square" onclick="openImportModal()" title="Import File">📁 Import</button>
+      <button class="btn btn-sm btn-square" onclick="openAddPersonModal()" title="Add Person">➕ Add</button>
     </div>
   </header>
 
@@ -1342,7 +1358,7 @@
       try {
         await apiRequest("/api/reminders", "POST", {
           title,
-          scheduledAt: new Date(dateVal).toISOString(),
+          scheduledAt: dateVal, // Pass direct string to preserve selected hour in user timezone
           repeatType,
         });
         showToast("Reminder created!");
@@ -1353,6 +1369,83 @@
         showToast(err.message, "error");
       } finally {
         btn.innerText = "Save";
+        btn.disabled = false;
+      }
+    };
+
+    // IMPORT CONTACTS / JSON FILE MODAL
+    window.openImportModal = function() {
+      document.getElementById("modal-body").innerHTML = `
+        <h3 style="margin-bottom: 10px;">📁 Import Contacts & Reminders</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Paste JSON data or select a <code>.json</code> file to import:</p>
+        
+        <div style="margin-bottom: 12px;">
+          <input type="file" id="import-file-input" accept=".json" class="input-control" style="width: 100%; margin-bottom: 8px;" onchange="handleFileSelected(event)" />
+          <textarea id="import-json-textarea" class="input-control" style="width: 100%; height: 120px; font-family: monospace; font-size: 0.8rem;" placeholder='[{"name": "Sarah", "birthday": "09-14", "note": "Best friend"}]'></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-submit-import" class="btn btn-full" onclick="submitImportJson()">Import Now</button>
+          <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
+        </div>
+      `;
+      document.getElementById("modal-backdrop").classList.remove("hidden");
+    };
+
+    window.handleFileSelected = function(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result;
+        if (text && typeof text === "string") {
+          document.getElementById("import-json-textarea").value = text;
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    window.submitImportJson = async function() {
+      const btn = document.getElementById("btn-submit-import");
+      const rawText = document.getElementById("import-json-textarea").value.trim();
+      if (!rawText) {
+        showToast("Please provide JSON data to import", "error");
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        showToast("Invalid JSON format", "error");
+        return;
+      }
+
+      btn.innerText = "Importing...";
+      btn.disabled = true;
+
+      try {
+        let importedCount = 0;
+        const list = Array.isArray(parsed) ? parsed : (parsed.people || parsed.contacts || [parsed]);
+        for (const item of list) {
+          if (item.name) {
+            await apiRequest("/api/people", "POST", {
+              name: item.name,
+              birthday: item.birthday || null,
+              note: item.note || item.notes?.[0] || null,
+            });
+            importedCount++;
+          }
+        }
+        showToast(`Successfully imported ${importedCount} contact(s)!`);
+        closeModal();
+        await loadPeople();
+        await loadDashboard();
+        await loadReminders();
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.innerText = "Import Now";
         btn.disabled = false;
       }
     };
