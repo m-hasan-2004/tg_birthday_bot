@@ -10,6 +10,7 @@ import { appRoutes } from "./routes/app.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
+import { HTML_CONTENT } from "../client/html.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,37 +87,8 @@ export function createServer() {
   app.route("/api", appRoutes);
 
   // Serve Web App HTML Frontend
-  const getHtmlContent = (): string => {
-    const candidates = [
-      path.resolve(process.cwd(), "public/index.html"),
-      path.resolve(process.cwd(), "src/client/index.html"),
-      path.resolve(__dirname, "../client/index.html"),
-      path.resolve(__dirname, "../../public/index.html"),
-      path.resolve(__dirname, "../public/index.html"),
-    ];
-
-    for (const p of candidates) {
-      try {
-        if (fs.existsSync(p)) {
-          return fs.readFileSync(p, "utf-8");
-        }
-      } catch {}
-    }
-    throw new Error("Frontend index.html not found");
-  };
-
-  let cachedHtml: string | null = null;
-
   const serveApp = (c: any) => {
-    try {
-      if (!cachedHtml || env.NODE_ENV === "development") {
-        cachedHtml = getHtmlContent();
-      }
-      return c.html(cachedHtml);
-    } catch (e) {
-      logger.error("Failed to load frontend HTML:", e);
-      return c.text("App Frontend loading error", 500);
-    }
+    return c.html(HTML_CONTENT);
   };
 
   app.get("/app", serveApp);

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && node -e \"const fs=require('fs'); fs.mkdirSync('public', {recursive:true}); fs.copyFileSync('src/client/index.html', 'public/index.html');\"",
+    "build": "node -e \"const fs=require('fs'); const html=fs.readFileSync('src/client/index.html','utf-8'); fs.writeFileSync('src/client/html.ts', '// Auto-generated\\nexport const HTML_CONTENT = ' + JSON.stringify(html) + ';\\n'); fs.mkdirSync('public', {recursive:true}); fs.writeFileSync('public/index.html', html);\" && tsc",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
