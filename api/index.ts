@@ -7,13 +7,13 @@ export const config = {
 
 export default async function handler(req: any, res: any) {
   try {
-    const protocol = req.headers["x-forwarded-proto"] || "https";
-    const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
-    const url = ${protocol}://System.Management.Automation.Internal.Host.InternalHost;
+    const rawUrl = req.headers["x-now-route-matches"] || req.url || "/";
+    const path = req.url || "/";
+    const fullUrl = 'https://tg-birthday-bot.vercel.app' + path;
 
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
-      if (value !== undefined) {
+      if (value !== undefined && key.toLowerCase() !== "host") {
         if (Array.isArray(value)) {
           for (const v of value) headers.append(key, v);
         } else {
@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    let body: any = null;
+    let body: any = undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {
       if (req.body !== undefined && req.body !== null) {
         body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
@@ -32,12 +32,12 @@ export default async function handler(req: any, res: any) {
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
         }
         if (chunks.length > 0) {
-          body = Buffer.concat(chunks);
+          body = Buffer.concat(chunks).toString("utf-8");
         }
       }
     }
 
-    const webReq = new Request(url, {
+    const webReq = new Request(fullUrl, {
       method: req.method,
       headers,
       body: (req.method !== "GET" && req.method !== "HEAD" && body) ? body : undefined,
@@ -45,17 +45,17 @@ export default async function handler(req: any, res: any) {
 
     const webRes = await app.fetch(webReq);
 
-    res.status(webRes.status);
     webRes.headers.forEach((val: string, key: string) => {
-      res.setHeader(key, val);
+      const lower = key.toLowerCase();
+      if (lower !== "content-length" && lower !== "transfer-encoding" && lower !== "content-encoding") {
+        try {
+          res.setHeader(key, val);
+        } catch {}
+      }
     });
 
-    if (webRes.body) {
-      const arrayBuf = await webRes.arrayBuffer();
-      res.send(Buffer.from(arrayBuf));
-    } else {
-      res.end();
-    }
+    const responseText = await webRes.text();
+    res.status(webRes.status).send(responseText);
   } catch (err: any) {
     console.error("Vercel Serverless Error:", err);
     res.status(500).json({ error: err?.message || "Internal Server Error" });
