@@ -17,6 +17,17 @@ const __dirname = path.dirname(__filename);
 export function createServer() {
   const app = new Hono();
 
+  // Global verbose error handler
+  app.onError((err, c) => {
+    logger.error(`Unhandled Error on ${c.req.method} ${c.req.path}:`, err);
+    return c.json({
+      error: err.message || "Internal server error",
+      stack: err.stack,
+      path: c.req.path,
+      method: c.req.method,
+    }, 500);
+  });
+
   // Health check endpoint
   app.get("/health", (c) => {
     return c.json({

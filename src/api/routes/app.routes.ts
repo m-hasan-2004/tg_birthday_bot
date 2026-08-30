@@ -105,9 +105,9 @@ appRoutes.get("/dashboard", async (c) => {
       upcomingBirthdays: upcomingBirthdays.slice(0, 5),
       upcomingReminders: formattedReminders.slice(0, 10),
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.error("Error fetching dashboard:", err);
-    return c.json({ error: "Failed to fetch dashboard" }, 500);
+    return c.json({ error: err?.message || "Failed to fetch dashboard", details: String(err) }, 500);
   }
 });
 

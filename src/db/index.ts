@@ -9,8 +9,16 @@ function createDatabase() {
   const dbUrl = (env.DATABASE_URL || "").replace(/&?channel_binding=[^&]+/g, "");
   
   if (dbUrl.includes("neon.tech")) {
-    const sql = neon(dbUrl);
-    return drizzle(sql, { schema });
+    const rawSql = neon(dbUrl);
+    const sqlProxy: any = (query: any, params: any, opts: any) => {
+      if (typeof query === "string") {
+        return rawSql.query(query, params, opts);
+      }
+      return (rawSql as any)(query, params, opts);
+    };
+    Object.assign(sqlProxy, rawSql);
+    sqlProxy.query = rawSql.query.bind(rawSql);
+    return drizzle(sqlProxy, { schema });
   }
 
   const client = postgres(dbUrl || "postgresql://localhost:5432/dating_app", {

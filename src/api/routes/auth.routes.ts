@@ -60,7 +60,7 @@ authRoutes.post("/telegram", async (c) => {
     });
   } catch (error: any) {
     logger.error("Error in /api/auth/telegram", error);
-    return c.json({ error: "Authentication failed" }, 500);
+    return c.json({ error: error?.message || "Authentication failed", details: String(error) }, 500);
   }
 });
 
@@ -104,6 +104,6 @@ authRoutes.post("/dev-login", async (c) => {
     });
   } catch (error: any) {
     logger.error("Error in /api/auth/dev-login:", error);
-    return c.json({ error: "Dev login failed" }, 500);
+    return c.json({ error: error?.message || "Dev login failed", details: String(error) }, 500);
   }
 });
