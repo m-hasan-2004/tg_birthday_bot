@@ -1,17 +1,27 @@
-import { drizzle } from "drizzle-orm/postgres-js";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import postgres from "postgres";
+import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import * as schema from "./schema.js";
 import { env } from "../config/env.js";
 
-// For serverless/connection pooling in PostgreSQL:
-// If running in production with transaction poolers (like Supabase/Neon/PgBouncer),
-// prepare: false is recommended.
-const client = postgres(env.DATABASE_URL, {
-  max: env.NODE_ENV === "production" ? 10 : 5,
-  idle_timeout: 20,
-  connect_timeout: 10,
-  prepare: false,
-});
+function createDatabase() {
+  const dbUrl = (env.DATABASE_URL || "").replace(/&?channel_binding=[^&]+/g, "");
+  
+  if (dbUrl.includes("neon.tech")) {
+    const sql = neon(dbUrl);
+    return drizzle(sql, { schema });
+  }
 
-export const db = drizzle(client, { schema });
-export type DB = typeof db;
+  const client = postgres(dbUrl || "postgresql://localhost:5432/dating_app", {
+    max: env.NODE_ENV === "production" ? 10 : 5,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    prepare: false,
+  });
+  return drizzlePg(client, { schema });
+}
+
+export const db = createDatabase();
+export type DB = any;
+

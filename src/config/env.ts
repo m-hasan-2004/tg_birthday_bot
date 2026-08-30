@@ -11,7 +11,7 @@ const envSchema = z.object({
   WEBHOOK_URL: z.preprocess((v) => (!v ? "" : v), z.string().url().or(z.literal(""))).default(""),
   WEBHOOK_SECRET: z.string().optional().default(""),
   CRON_SECRET: z.string().optional().default(""),
-  DEFAULT_TIMEZONE: z.string().default("Europe/Berlin"),
+  DEFAULT_TIMEZONE: z.string().default("Asia/Tehran"),
   WEB_APP_URL: z.preprocess((v) => (!v ? "" : v), z.string().url().or(z.literal(""))).default(""),
   SESSION_SECRET: z.string().default("default_dev_session_secret_change_in_production_12345"),
   OWNER_TELEGRAM_ID: z.string().default("5138117035"),

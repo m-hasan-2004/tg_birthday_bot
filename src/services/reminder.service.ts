@@ -117,7 +117,7 @@ export class ReminderService {
       .where(and(eq(reminders.userId, userId), eq(reminders.status, "pending")))
       .orderBy(asc(reminders.scheduledAt));
 
-    const combinedList: ReminderWithPerson[] = generalReminders.map((r) => ({
+    const combinedList: ReminderWithPerson[] = generalReminders.map((r: any) => ({
       ...r,
       isBirthdayReminder: false,
     } as unknown as ReminderWithPerson));

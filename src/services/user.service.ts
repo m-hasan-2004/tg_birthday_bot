@@ -66,7 +66,7 @@ export class UserService {
     role?: UserRole;
   }): Promise<User> {
     const tid = String(data.telegramId);
-    const tz = data.timezone && isValidTimezone(data.timezone) ? data.timezone : "Europe/Berlin";
+    const tz = data.timezone && isValidTimezone(data.timezone) ? data.timezone : (env.DEFAULT_TIMEZONE || "Asia/Tehran");
     const assignedRole = data.role || this.resolveUserRole(tid);
 
     const [inserted] = await this.database

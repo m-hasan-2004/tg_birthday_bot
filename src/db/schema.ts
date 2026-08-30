@@ -8,7 +8,7 @@ export const users = pgTable(
     name: text("name").notNull(),
     birthday: varchar("birthday", { length: 20 }),
     additionalInfo: text("additional_info"),
-    timezone: varchar("timezone", { length: 64 }).notNull().default("Europe/Berlin"),
+    timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Tehran"),
     role: varchar("role", { length: 20 }).notNull().default("user"), // 'user' | 'admin' | 'owner'
     isDisabled: boolean("is_disabled").notNull().default(false),
     sessionState: jsonb("session_state"),

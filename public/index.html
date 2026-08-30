@@ -456,8 +456,7 @@
   <!-- Sticky Header -->
   <header>
     <div class="brand">
-      <span id="brand-title">🎂 Birthday Reminder</span>
-      <span id="header-badge" class="brand-badge hidden">Admin</span>
+      <span id="header-badge" class="brand-badge hidden">ADMIN</span>
     </div>
   </header>
 
@@ -537,10 +536,6 @@
           <label>Birthday (MM-dd)</label>
           <input id="profile-birthday-input" class="input-control" type="text" placeholder="09-14" />
         </div>
-        <div class="input-group">
-          <label>Timezone</label>
-          <input id="profile-tz-input" class="input-control" type="text" placeholder="Europe/Berlin" />
-        </div>
         <button id="btn-save-profile" class="btn btn-full" onclick="saveProfile()">Save Profile</button>
       </div>
     </section>
@@ -579,21 +574,25 @@
 
   <!-- Bottom Navigation -->
   <nav id="user-nav" class="bottom-nav">
-    <button class="nav-tab active" onclick="showTab('dashboard')">
+    <button id="nav-tab-dashboard" class="nav-tab active" onclick="showTab('dashboard')">
       <span class="icon">🏠</span>
       <span>Home</span>
     </button>
-    <button class="nav-tab" onclick="showTab('people')">
+    <button id="nav-tab-people" class="nav-tab" onclick="showTab('people')">
       <span class="icon">👥</span>
       <span>People</span>
     </button>
-    <button class="nav-tab" onclick="showTab('reminders')">
+    <button id="nav-tab-reminders" class="nav-tab" onclick="showTab('reminders')">
       <span class="icon">⏰</span>
       <span>Reminders</span>
     </button>
-    <button class="nav-tab" onclick="showTab('profile')">
+    <button id="nav-tab-profile" class="nav-tab" onclick="showTab('profile')">
       <span class="icon">👤</span>
       <span>Profile</span>
+    </button>
+    <button id="nav-tab-admin" class="nav-tab hidden" onclick="showTab('admin')">
+      <span class="icon">🛡️</span>
+      <span>Admin</span>
     </button>
   </nav>
 
@@ -740,15 +739,18 @@
     async function initApp() {
       await ensureAuth();
 
-      // Route to Admin or User interface based on server-side role
+      // Show Admin tab in bottom nav if user is admin or owner
       if (currentUser && (currentUser.role === "admin" || currentUser.role === "owner")) {
-        document.getElementById("brand-title").innerText = "🛡️ Admin Panel";
-        document.getElementById("header-badge").classList.remove("hidden");
-        document.getElementById("header-badge").innerText = currentUser.role.toUpperCase();
-        showTab("admin");
-      } else {
-        showTab("dashboard");
+        const adminTabBtn = document.getElementById("nav-tab-admin");
+        if (adminTabBtn) adminTabBtn.classList.remove("hidden");
+        const headerBadge = document.getElementById("header-badge");
+        if (headerBadge) {
+          headerBadge.classList.remove("hidden");
+          headerBadge.innerText = currentUser.role.toUpperCase();
+        }
       }
+
+      showTab("dashboard");
     }
 
     window.showTab = function(tabName) {
@@ -758,10 +760,19 @@
       const targetView = document.getElementById("view-" + tabName);
       if (targetView) targetView.classList.remove("hidden");
 
-      const tabs = ["dashboard", "people", "reminders", "profile"];
-      const tabIndex = tabs.indexOf(tabName);
-      const tabBtns = document.querySelectorAll(".nav-tab");
-      if (tabBtns[tabIndex]) tabBtns[tabIndex].classList.add("active");
+      const tabBtn = document.getElementById("nav-tab-" + tabName);
+      if (tabBtn) tabBtn.classList.add("active");
+
+      // Reveal admin tab if user has role
+      if (currentUser && (currentUser.role === "admin" || currentUser.role === "owner")) {
+        const adminTabBtn = document.getElementById("nav-tab-admin");
+        if (adminTabBtn) adminTabBtn.classList.remove("hidden");
+        const headerBadge = document.getElementById("header-badge");
+        if (headerBadge) {
+          headerBadge.classList.remove("hidden");
+          headerBadge.innerText = currentUser.role.toUpperCase();
+        }
+      }
 
       if (tabName === "dashboard") loadDashboard();
       if (tabName === "people") loadPeople();
@@ -778,6 +789,16 @@
           document.getElementById("greeting-title").innerText = `Good day, ${data.user.name}! 👋`;
           document.getElementById("stat-people").innerText = data.stats.peopleCount;
           document.getElementById("stat-reminders").innerText = data.stats.remindersCount;
+
+          if (currentUser.role === "admin" || currentUser.role === "owner") {
+            const adminTabBtn = document.getElementById("nav-tab-admin");
+            if (adminTabBtn) adminTabBtn.classList.remove("hidden");
+            const headerBadge = document.getElementById("header-badge");
+            if (headerBadge) {
+              headerBadge.classList.remove("hidden");
+              headerBadge.innerText = currentUser.role.toUpperCase();
+            }
+          }
 
           // Upcoming Birthdays
           const bdayContainer = document.getElementById("dashboard-birthdays-list");
@@ -1048,28 +1069,46 @@
 
     // STEP-BY-STEP REMINDER WIZARD FLOW
     window.openReminderWizard = async function() {
-      const peopleRes = await apiRequest("/api/people");
-      const people = peopleRes.people || [];
+      try {
+        const peopleRes = await apiRequest("/api/people");
+        const people = peopleRes.people || [];
 
-      let optionsHtml = people.map(p => `
-        <div class="list-item" onclick="selectWizardPerson('${p.id}', '${escapeHtml(p.name)}', '${escapeHtml(p.birthday || '')}')">
-          <div class="item-title">👤 ${escapeHtml(p.name)}</div>
-          <div class="item-subtitle">${p.birthday ? "🎂 " + escapeHtml(p.formattedBirthday) : "No birthday set"}</div>
-        </div>
-      `).join("");
+        let peopleListHtml = "";
+        if (people.length > 0) {
+          peopleListHtml = `
+            <div style="margin-bottom: 12px;">
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">Select a person for birthday reminders:</p>
+              <div class="item-list" style="max-height: 180px; overflow-y: auto;">
+                ${people.map(p => `
+                  <div class="list-item" style="padding: 10px 14px;" onclick="selectWizardPerson('${p.id}', '${escapeHtml(p.name)}', '${escapeHtml(p.birthday || '')}')">
+                    <div class="item-title">👤 ${escapeHtml(p.name)}</div>
+                    <div class="item-subtitle">${p.birthday ? "🎂 " + escapeHtml(p.formattedBirthday) : "No birthday set"}</div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          `;
+        } else {
+          peopleListHtml = `
+            <div style="background: rgba(255,255,255,0.03); border: 1px dashed var(--glass-border); border-radius: var(--radius-md); padding: 12px; text-align: center; margin-bottom: 12px;">
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">No contacts added yet.</p>
+              <button class="btn btn-secondary btn-sm" onclick="openAddPersonModal()">➕ Add Contact First</button>
+            </div>
+          `;
+        }
 
-      document.getElementById("modal-body").innerHTML = `
-        <h3 style="margin-bottom: 6px;">⏰ New Reminder</h3>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">Who is this reminder for?</p>
-        <div class="item-list" style="margin-bottom: 14px; max-height: 220px; overflow-y: auto;">
-          ${optionsHtml}
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn-secondary btn-full" onclick="openOneTimeReminderModal()">⏰ One-Time (General Reminder)</button>
-          <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
-        </div>
-      `;
-      document.getElementById("modal-backdrop").classList.remove("hidden");
+        document.getElementById("modal-body").innerHTML = `
+          <h3 style="margin-bottom: 12px;">⏰ Create Reminder</h3>
+          ${peopleListHtml}
+          <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn btn-full" onclick="openOneTimeReminderModal()">⏰ Custom / One-Time Reminder</button>
+            <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
+          </div>
+        `;
+        document.getElementById("modal-backdrop").classList.remove("hidden");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     };
 
     window.openReminderWizardForPerson = async function(personId) {
@@ -1273,7 +1312,6 @@
         if (res.user) {
           document.getElementById("profile-name-input").value = res.user.name || "";
           document.getElementById("profile-birthday-input").value = res.user.birthday || "";
-          document.getElementById("profile-tz-input").value = res.user.timezone || "Europe/Berlin";
         }
       } catch (err) {
         showToast(err.message, "error");
@@ -1287,10 +1325,9 @@
 
       const name = document.getElementById("profile-name-input").value;
       const birthday = document.getElementById("profile-birthday-input").value;
-      const timezone = document.getElementById("profile-tz-input").value;
 
       try {
-        await apiRequest("/api/profile", "PUT", { name, birthday, timezone });
+        await apiRequest("/api/profile", "PUT", { name, birthday, timezone: "Asia/Tehran" });
         showToast("Profile updated!");
         loadDashboard();
       } catch (err) {

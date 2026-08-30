@@ -1,5 +1,7 @@
-import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { migrate as migrateNeon } from "drizzle-orm/neon-http/migrator";
+import { migrate as migratePg } from "drizzle-orm/postgres-js/migrator";
 import { db } from "./index.js";
+import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -11,7 +13,12 @@ export async function runMigrations() {
   logger.info("Running database migrations...");
   try {
     const migrationsFolder = path.resolve(__dirname, "./migrations");
-    await migrate(db, { migrationsFolder });
+    const dbUrl = (env.DATABASE_URL || "").replace(/&?channel_binding=[^&]+/g, "");
+    if (dbUrl.includes("neon.tech")) {
+      await migrateNeon(db as any, { migrationsFolder });
+    } else {
+      await migratePg(db as any, { migrationsFolder });
+    }
     logger.info("Database migrations applied successfully.");
   } catch (error) {
     logger.error("Failed to apply database migrations", error);

@@ -85,13 +85,13 @@ export function formatBirthday(birthdayStr: string | null | undefined): string {
  */
 export function getNextBirthday(
   birthdayStr: string,
-  userTimezone: string = "Europe/Berlin",
+  userTimezone: string = "Asia/Tehran",
   referenceDate?: DateTime
 ): { nextBirthday: DateTime; daysUntil: number; year: number } | null {
   const parsed = parseBirthday(birthdayStr);
   if (!parsed) return null;
 
-  const zone = isValidTimezone(userTimezone) ? userTimezone : "Europe/Berlin";
+  const zone = isValidTimezone(userTimezone) ? userTimezone : "Asia/Tehran";
   const now = (referenceDate || DateTime.now()).setZone(zone);
   const currentYear = now.year;
 
@@ -136,19 +136,19 @@ export function getNextBirthday(
 
 /**
  * Calculates the exact scheduled timestamp for a birthday reminder offset.
- * Example: offsetDays = 7, reminderTime = "09:00", timezone = "Europe/Berlin".
+ * Example: offsetDays = 7, reminderTime = "09:00", timezone = "Asia/Tehran".
  */
 export function getBirthdayReminderTarget(
   birthdayStr: string,
   offsetDays: number,
   reminderTimeStr: string,
-  userTimezone: string = "Europe/Berlin",
+  userTimezone: string = "Asia/Tehran",
   targetYear?: number
 ): DateTime | null {
   const parsed = parseBirthday(birthdayStr);
   if (!parsed) return null;
 
-  const zone = isValidTimezone(userTimezone) ? userTimezone : "Europe/Berlin";
+  const zone = isValidTimezone(userTimezone) ? userTimezone : "Asia/Tehran";
   const year = targetYear || DateTime.now().setZone(zone).year;
 
   let day = parsed.day;
@@ -175,11 +175,11 @@ export function getBirthdayReminderTarget(
 export function getNextReminderOccurrence(
   currentScheduledAt: Date,
   repeatType: RecurrenceType,
-  userTimezone: string = "Europe/Berlin"
+  userTimezone: string = "Asia/Tehran"
 ): Date | null {
   if (repeatType === "none") return null;
 
-  const zone = isValidTimezone(userTimezone) ? userTimezone : "Europe/Berlin";
+  const zone = isValidTimezone(userTimezone) ? userTimezone : "Asia/Tehran";
   let dt = DateTime.fromJSDate(currentScheduledAt).setZone(zone);
 
   switch (repeatType) {
@@ -205,8 +205,8 @@ export function getNextReminderOccurrence(
 /**
  * Formats a Date object to user's localized date string (e.g. "September 20" or "Today" or "Tomorrow").
  */
-export function formatReminderDate(date: Date, userTimezone: string = "Europe/Berlin"): { dateStr: string; timeStr: string } {
-  const zone = isValidTimezone(userTimezone) ? userTimezone : "Europe/Berlin";
+export function formatReminderDate(date: Date, userTimezone: string = "Asia/Tehran"): { dateStr: string; timeStr: string } {
+  const zone = isValidTimezone(userTimezone) ? userTimezone : "Asia/Tehran";
   const dt = DateTime.fromJSDate(date).setZone(zone);
   const now = DateTime.now().setZone(zone);
 
