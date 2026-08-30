@@ -8,7 +8,7 @@ import { env } from "../config/env.js";
 function createDatabase() {
   const dbUrl = (env.DATABASE_URL || "").replace(/&?channel_binding=[^&]+/g, "");
   
-  if (dbUrl.includes("neon.tech")) {
+  if (dbUrl.includes("neon") || process.env.VERCEL || dbUrl.startsWith("postgres")) {
     const rawSql = neon(dbUrl);
     const sqlProxy: any = (query: any, params: any, opts: any) => {
       if (typeof query === "string") {
