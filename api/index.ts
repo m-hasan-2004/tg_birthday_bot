@@ -7,17 +7,19 @@ export const config = {
 
 export default async function handler(req: any, res: any) {
   try {
-    const rawUrl = req.headers["x-now-route-matches"] || req.url || "/";
     const path = req.url || "/";
     const fullUrl = 'https://tg-birthday-bot.vercel.app' + path;
 
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
-      if (value !== undefined && key.toLowerCase() !== "host") {
-        if (Array.isArray(value)) {
-          for (const v of value) headers.append(key, v);
-        } else {
-          headers.set(key, value as string);
+      if (value !== undefined) {
+        const lower = key.toLowerCase();
+        if (lower !== "host" && lower !== "content-length") {
+          if (Array.isArray(value)) {
+            for (const v of value) headers.append(key, v);
+          } else {
+            headers.set(key, value as string);
+          }
         }
       }
     }
@@ -37,10 +39,14 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    if (body && !headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
+
     const webReq = new Request(fullUrl, {
       method: req.method,
       headers,
-      body: (req.method !== "GET" && req.method !== "HEAD" && body) ? body : undefined,
+      body: (req.method !== "GET" && req.method !== "HEAD" && body && body.length > 0) ? body : undefined,
     });
 
     const webRes = await app.fetch(webReq);

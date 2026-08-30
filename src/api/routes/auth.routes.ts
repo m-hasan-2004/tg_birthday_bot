@@ -14,7 +14,17 @@ export const authRoutes = new Hono<AuthEnv>();
 // Authenticate Telegram Web App User via initData
 authRoutes.post("/telegram", async (c) => {
   try {
-    const body = await c.req.json();
+    let body: any = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      try {
+        const text = await c.req.text();
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
+    }
     const initDataRaw = body.initData;
 
     if (!initDataRaw) {
@@ -67,7 +77,17 @@ authRoutes.post("/telegram", async (c) => {
 // Browser Dev / Demo Login (Guarantees full persistence testing when testing in browser outside Telegram)
 authRoutes.post("/dev-login", async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    let body: any = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      try {
+        const text = await c.req.text();
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
+    }
     const telegramId = body.telegramId ? String(body.telegramId) : "dev_browser_user_1";
     const name = body.name || "Alex (Browser Tester)";
     const role = body.role || "user";
