@@ -713,15 +713,15 @@
             currentUser = null;
           }
 
-          // 3. Fallback for browser testing (dev-login)
+          // 3. Fallback for browser preview outside Telegram (guest demo)
           try {
             const res = await fetch("/api/auth/dev-login", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                telegramId: "5138117035",
-                name: "Owner",
-                role: "owner"
+                telegramId: "browser_guest",
+                name: "Guest User",
+                role: "user"
               }),
               signal: AbortSignal.timeout(12000),
             });

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { authService } from "../../services/auth.service.js";
 import { userService } from "../../services/user.service.js";
+import { env } from "../../config/env.js";
 import { logger } from "../../utils/logger.js";
 
 type AuthEnv = {
@@ -74,7 +75,7 @@ authRoutes.post("/telegram", async (c) => {
   }
 });
 
-// Browser Dev / Demo Login (Guarantees full persistence testing when testing in browser outside Telegram)
+// Browser Dev / Demo Login (For browser preview outside Telegram)
 authRoutes.post("/dev-login", async (c) => {
   try {
     let body: any = {};
@@ -88,9 +89,18 @@ authRoutes.post("/dev-login", async (c) => {
         body = {};
       }
     }
-    const telegramId = body.telegramId ? String(body.telegramId) : "dev_browser_user_1";
-    const name = body.name || "Alex (Browser Tester)";
-    const role = body.role || "user";
+
+    // In production or untrusted browser requests, always isolate to a standard guest demo user
+    // Never allow arbitrary claiming of owner/admin telegram ID via unauthenticated dev-login
+    let telegramId = "browser_guest";
+    let name = "Guest (Browser Demo)";
+    let role = "user";
+
+    if (env.NODE_ENV !== "production") {
+      telegramId = body.telegramId ? String(body.telegramId) : "dev_browser_user_1";
+      name = body.name || "Alex (Browser Tester)";
+      role = body.role || "user";
+    }
 
     let user = await userService.findByTelegramId(telegramId);
     if (!user) {
@@ -105,10 +115,13 @@ authRoutes.post("/dev-login", async (c) => {
       return c.json({ error: "Account is disabled." }, 403);
     }
 
+    // In production, force token role to standard user if logged in via dev-login
+    const tokenRole = env.NODE_ENV === "production" ? "user" : user.role;
+
     const token = authService.createSessionToken({
       userId: user.id,
       telegramId: user.telegramId,
-      role: user.role,
+      role: tokenRole as any,
     });
 
     return c.json({
@@ -119,7 +132,7 @@ authRoutes.post("/dev-login", async (c) => {
         birthday: user.birthday,
         additionalInfo: user.additionalInfo,
         timezone: user.timezone,
-        role: user.role,
+        role: tokenRole,
       },
     });
   } catch (error: any) {
