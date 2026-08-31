@@ -35,9 +35,7 @@ export function createServer() {
   // Telegram webhook endpoint
   app.post(
     "/api/webhook",
-    webhookCallback(bot, "hono", {
-      secretToken: env.WEBHOOK_SECRET || undefined,
-    })
+    webhookCallback(bot, "hono")
   );
 
   // Scheduled reminder trigger endpoint
