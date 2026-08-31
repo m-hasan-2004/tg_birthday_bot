@@ -12,6 +12,7 @@ import { notesHandler } from "./handlers/notes.js";
 import { birthdayHandler } from "./handlers/birthday.js";
 import { remindersHandler } from "./handlers/reminders.js";
 import { textHandler } from "./handlers/text.js";
+import { notificationService } from "../services/notification.service.js";
 
 export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContext> {
   const bot = new Bot<BotContext>(token);
@@ -71,6 +72,9 @@ export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContex
     }
 
     await next();
+
+    // Self-healing: dispatch any pending notifications in background on user activity
+    notificationService.processAllDueNotifications(bot).catch(() => {});
 
     const elapsedMs = Date.now() - startTime;
     logger.debug(`Processed update ${updateId} in ${elapsedMs}ms`, {

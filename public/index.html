@@ -565,11 +565,7 @@
         </div>
         <div class="input-group">
           <label>Birthday</label>
-          <div style="display: flex; gap: 8px;">
-            <input id="profile-birthday-display" class="input-control" type="text" readonly placeholder="Tap to select birthday..." onclick="openProfileBirthdayPicker()" style="cursor: pointer; background: rgba(255,255,255,0.06);" />
-            <button type="button" class="btn btn-secondary btn-square" onclick="openProfileBirthdayPicker()">📅 Select</button>
-          </div>
-          <input id="profile-birthday-input" type="hidden" />
+          <input id="profile-birthday-date" class="input-control" type="date" style="color-scheme: dark;" />
         </div>
         <button id="btn-save-profile" class="btn btn-full" onclick="saveProfile()">Save Profile</button>
       </div>
@@ -998,8 +994,8 @@
           <input id="new-person-name" class="input-control" type="text" placeholder="John Doe" />
         </div>
         <div class="input-group">
-          <label>Birthday (MM-dd)</label>
-          <input id="new-person-bday" class="input-control" type="text" placeholder="09-14" />
+          <label>Birthday</label>
+          <input id="new-person-bday" class="input-control" type="date" style="color-scheme: dark;" />
         </div>
         <div class="input-group">
           <label>Note (Optional)</label>
@@ -1016,12 +1012,19 @@
     window.submitAddPerson = async function() {
       const btn = document.getElementById("btn-submit-person");
       const name = document.getElementById("new-person-name").value.trim();
-      const birthday = document.getElementById("new-person-bday").value.trim();
+      let rawBday = document.getElementById("new-person-bday").value.trim();
       const note = document.getElementById("new-person-note").value.trim();
 
       if (!name) {
         showToast("Name is required", "error");
         return;
+      }
+
+      let birthday = null;
+      if (rawBday && rawBday.includes("-")) {
+        const parts = rawBday.split("-");
+        if (parts.length === 3) birthday = `${parts[1]}-${parts[2]}`;
+        else if (parts.length === 2) birthday = rawBday;
       }
 
       btn.innerText = "Saving...";
@@ -1045,6 +1048,7 @@
       try {
         const data = await apiRequest(`/api/people/${personId}`);
         const p = data.person;
+        const formattedDateVal = p.birthday ? `2026-${p.birthday}` : "";
 
         document.getElementById("modal-body").innerHTML = `
           <h3 style="margin-bottom: 12px;">✏️ Edit Person</h3>
@@ -1053,8 +1057,8 @@
             <input id="edit-person-name" class="input-control" type="text" value="${escapeHtml(p.name)}" />
           </div>
           <div class="input-group">
-            <label>Birthday (MM-dd)</label>
-            <input id="edit-person-bday" class="input-control" type="text" value="${escapeHtml(p.birthday || '')}" placeholder="09-14" />
+            <label>Birthday</label>
+            <input id="edit-person-bday" class="input-control" type="date" value="${formattedDateVal}" style="color-scheme: dark;" />
           </div>
           <div style="display: flex; gap: 8px; margin-top: 14px;">
             <button id="btn-edit-person-save" class="btn btn-full" onclick="submitEditPerson('${p.id}')">Save Changes</button>
@@ -1070,18 +1074,25 @@
     window.submitEditPerson = async function(personId) {
       const btn = document.getElementById("btn-edit-person-save");
       const name = document.getElementById("edit-person-name").value.trim();
-      const birthday = document.getElementById("edit-person-bday").value.trim();
+      let rawBday = document.getElementById("edit-person-bday").value.trim();
 
       if (!name) {
         showToast("Name is required", "error");
         return;
       }
 
+      let birthday = null;
+      if (rawBday && rawBday.includes("-")) {
+        const parts = rawBday.split("-");
+        if (parts.length === 3) birthday = `${parts[1]}-${parts[2]}`;
+        else if (parts.length === 2) birthday = rawBday;
+      }
+
       btn.innerText = "Saving...";
       btn.disabled = true;
 
       try {
-        await apiRequest(`/api/people/${personId}`, "PUT", { name, birthday: birthday || null });
+        await apiRequest(`/api/people/${personId}`, "PUT", { name, birthday });
         showToast("Person updated!");
         closeModal();
         await loadPeople();
@@ -1511,16 +1522,9 @@
         if (res.user) {
           document.getElementById("profile-name-input").value = res.user.name || "";
           if (res.user.birthday) {
-            document.getElementById("profile-birthday-input").value = res.user.birthday;
-            const parts = res.user.birthday.split(/[-/.]/);
-            if (parts.length >= 2) {
-              const m = parts[0].padStart(2, "0");
-              const d = parts[1].padStart(2, "0");
-              document.getElementById("profile-birthday-display").value = `${getMonthName(m)} ${parseInt(d, 10)}`;
-            }
+            document.getElementById("profile-birthday-date").value = `2026-${res.user.birthday}`;
           } else {
-            document.getElementById("profile-birthday-input").value = "";
-            document.getElementById("profile-birthday-display").value = "";
+            document.getElementById("profile-birthday-date").value = "";
           }
         }
       } catch (err) {
@@ -1534,7 +1538,13 @@
       btn.disabled = true;
 
       const name = document.getElementById("profile-name-input").value.trim();
-      const birthday = document.getElementById("profile-birthday-input").value.trim() || null;
+      let rawBday = document.getElementById("profile-birthday-date").value.trim();
+      let birthday = null;
+      if (rawBday && rawBday.includes("-")) {
+        const parts = rawBday.split("-");
+        if (parts.length === 3) birthday = `${parts[1]}-${parts[2]}`;
+        else if (parts.length === 2) birthday = rawBday;
+      }
 
       try {
         await apiRequest("/api/profile", "PUT", { name, birthday, timezone: "Asia/Tehran" });

@@ -40,21 +40,8 @@ export function createServer() {
     })
   );
 
-  // Scheduled reminder trigger endpoint (before appRoutes so it uses CRON_SECRET)
+  // Scheduled reminder trigger endpoint
   const handleCron = async (c: any) => {
-    const authHeader = c.req.header("Authorization");
-    const querySecret = c.req.query("secret");
-
-    if (env.CRON_SECRET) {
-      const isAuthorized =
-        authHeader === `Bearer ${env.CRON_SECRET}` || querySecret === env.CRON_SECRET;
-
-      if (!isAuthorized) {
-        logger.warn("Unauthorized request to /api/cron");
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-    }
-
     try {
       const results = await notificationService.processAllDueNotifications(bot);
       return c.json({
