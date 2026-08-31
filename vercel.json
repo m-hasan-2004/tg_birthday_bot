@@ -1,12 +1,6 @@
 {
   "version": 2,
   "outputDirectory": "public",
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "* * * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",

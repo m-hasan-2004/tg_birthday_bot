@@ -1,34 +1,17 @@
-name: Scheduled Reminders Trigger
+name: Reminder Notification Cron
 
 on:
   schedule:
-    # Runs every 15 minutes
-    - cron: "*/15 * * * *"
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
-  ping-cron:
-    name: Ping /api/cron Endpoint
+  trigger-reminders:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel Scheduled Reminder Job
+      - name: Trigger Vercel /api/cron
         run: |
-          TARGET_URL="${{ secrets.APP_URL }}"
-          CRON_SECRET="${{ secrets.CRON_SECRET }}"
-
-          if [ -z "$TARGET_URL" ]; then
-            echo "::notice ::APP_URL secret is not set in GitHub repository secrets. Skipping ping."
-            exit 0
-          fi
-
-          # Clean trailing slash
-          TARGET_URL="${TARGET_URL%/}"
-          ENDPOINT="$TARGET_URL/api/cron"
-
-          echo "Pinging $ENDPOINT..."
-          if [ -n "$CRON_SECRET" ]; then
-            curl -s -f -X POST "$ENDPOINT" -H "Authorization: Bearer $CRON_SECRET" || curl -s -f "$ENDPOINT?secret=$CRON_SECRET"
-          else
-            curl -s -f -X POST "$ENDPOINT" || curl -s -f "$ENDPOINT"
-          fi
+          echo "Triggering birthday and reminder notification dispatch..."
+          curl -s -X POST "https://tg-birthday-bot.vercel.app/api/cron" || curl -s "https://tg-birthday-bot.vercel.app/api/cron"
           echo "Done."
