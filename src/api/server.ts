@@ -80,8 +80,11 @@ export function createServer() {
   // Mount Application REST API (Protected routes)
   app.route("/api", appRoutes);
 
-  // Serve Web App HTML Frontend
+  // Serve Web App HTML Frontend with strict no-cache headers
   const serveApp = (c: any) => {
+    c.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    c.header("Pragma", "no-cache");
+    c.header("Expires", "0");
     return c.html(HTML_CONTENT);
   };
 

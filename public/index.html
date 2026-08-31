@@ -566,25 +566,8 @@
         <div class="input-group">
           <label>Birthday</label>
           <div style="display: flex; gap: 8px;">
-            <select id="profile-bday-month" class="input-control" style="flex: 1;">
-              <option value="">Month</option>
-              <option value="01">January (01)</option>
-              <option value="02">February (02)</option>
-              <option value="03">March (03)</option>
-              <option value="04">April (04)</option>
-              <option value="05">May (05)</option>
-              <option value="06">June (06)</option>
-              <option value="07">July (07)</option>
-              <option value="08">August (08)</option>
-              <option value="09">September (09)</option>
-              <option value="10">October (10)</option>
-              <option value="11">November (11)</option>
-              <option value="12">December (12)</option>
-            </select>
-            <select id="profile-bday-day" class="input-control" style="flex: 1;">
-              <option value="">Day</option>
-              ${Array.from({length: 31}, (_, i) => `<option value="${String(i+1).padStart(2, '0')}">${i+1}</option>`).join('')}
-            </select>
+            <input id="profile-birthday-display" class="input-control" type="text" readonly placeholder="Tap to select birthday..." onclick="openProfileBirthdayPicker()" style="cursor: pointer; background: rgba(255,255,255,0.06);" />
+            <button type="button" class="btn btn-secondary btn-square" onclick="openProfileBirthdayPicker()">📅 Select</button>
           </div>
           <input id="profile-birthday-input" type="hidden" />
         </div>
@@ -1392,82 +1375,91 @@
       }
     };
 
-    // IMPORT CONTACTS / JSON FILE MODAL
-    window.openImportModal = function() {
-      document.getElementById("modal-body").innerHTML = `
-        <h3 style="margin-bottom: 10px;">📁 Import Contacts & Reminders</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Paste JSON data or select a <code>.json</code> file to import:</p>
-        
-        <div style="margin-bottom: 12px;">
-          <input type="file" id="import-file-input" accept=".json" class="input-control" style="width: 100%; margin-bottom: 8px;" onchange="handleFileSelected(event)" />
-          <textarea id="import-json-textarea" class="input-control" style="width: 100%; height: 120px; font-family: monospace; font-size: 0.8rem;" placeholder='[{"name": "Sarah", "birthday": "09-14", "note": "Best friend"}]'></textarea>
-        </div>
+    // POPUP BIRTHDAY PICKER MODAL FOR PROFILE & CONTACTS
+    let tempPickerMonth = "01";
+    let tempPickerDay = "01";
 
-        <div style="display: flex; gap: 8px;">
-          <button id="btn-submit-import" class="btn btn-full" onclick="submitImportJson()">Import Now</button>
-          <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
-        </div>
-      `;
+    window.openProfileBirthdayPicker = function() {
+      const currentVal = document.getElementById("profile-birthday-input")?.value || "";
+      if (currentVal && currentVal.includes("-")) {
+        const [m, d] = currentVal.split("-");
+        tempPickerMonth = m.padStart(2, "0");
+        tempPickerDay = d.padStart(2, "0");
+      }
+
+      renderBirthdayPickerModal();
       document.getElementById("modal-backdrop").classList.remove("hidden");
     };
 
-    window.handleFileSelected = function(e) {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result;
-        if (text && typeof text === "string") {
-          document.getElementById("import-json-textarea").value = text;
-        }
+    window.renderBirthdayPickerModal = function() {
+      const months = [
+        { id: "01", name: "Jan" }, { id: "02", name: "Feb" }, { id: "03", name: "Mar" },
+        { id: "04", name: "Apr" }, { id: "05", name: "May" }, { id: "06", name: "Jun" },
+        { id: "07", name: "Jul" }, { id: "08", name: "Aug" }, { id: "09", name: "Sep" },
+        { id: "10", name: "Oct" }, { id: "11", name: "Nov" }, { id: "12", name: "Dec" },
+      ];
+
+      const daysCount = ["02"].includes(tempPickerMonth) ? 29 : ["04", "06", "09", "11"].includes(tempPickerMonth) ? 30 : 31;
+
+      document.getElementById("modal-body").innerHTML = `
+        <h3 style="margin-bottom: 6px;">🎂 Select Birthday</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Selected: <b style="color: var(--accent-primary);">${getMonthName(tempPickerMonth)} ${parseInt(tempPickerDay, 10)}</b></p>
+        
+        <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">1. Month</p>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px;">
+          ${months.map(m => `
+            <button type="button" class="btn ${m.id === tempPickerMonth ? '' : 'btn-secondary'} btn-sm" style="padding: 6px 4px; font-size: 0.8rem;" onclick="setPickerMonth('${m.id}')">${m.name}</button>
+          `).join('')}
+        </div>
+
+        <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">2. Day</p>
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; max-height: 150px; overflow-y: auto; margin-bottom: 14px;">
+          ${Array.from({length: daysCount}, (_, i) => {
+            const dStr = String(i + 1).padStart(2, "0");
+            const isSelected = dStr === tempPickerDay;
+            return `<button type="button" class="btn ${isSelected ? '' : 'btn-secondary'} btn-sm" style="padding: 6px 0; font-size: 0.8rem;" onclick="setPickerDay('${dStr}')">${i + 1}</button>`;
+          }).join('')}
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-full" onclick="confirmProfileBirthday()">Confirm</button>
+          <button type="button" class="btn btn-secondary btn-full" onclick="clearProfileBirthday()">Clear</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal()">Cancel</button>
+        </div>
+      `;
+    };
+
+    window.setPickerMonth = function(m) {
+      tempPickerMonth = m;
+      renderBirthdayPickerModal();
+    };
+
+    window.setPickerDay = function(d) {
+      tempPickerDay = d;
+      renderBirthdayPickerModal();
+    };
+
+    window.confirmProfileBirthday = function() {
+      const bdayStr = `${tempPickerMonth}-${tempPickerDay}`;
+      document.getElementById("profile-birthday-input").value = bdayStr;
+      document.getElementById("profile-birthday-display").value = `${getMonthName(tempPickerMonth)} ${parseInt(tempPickerDay, 10)}`;
+      closeModal();
+    };
+
+    window.clearProfileBirthday = function() {
+      document.getElementById("profile-birthday-input").value = "";
+      document.getElementById("profile-birthday-display").value = "";
+      closeModal();
+    };
+
+    function getMonthName(m) {
+      const map = {
+        "01": "January", "02": "February", "03": "March", "04": "April",
+        "05": "May", "06": "June", "07": "July", "08": "August",
+        "09": "September", "10": "October", "11": "November", "12": "December"
       };
-      reader.readAsText(file);
-    };
-
-    window.submitImportJson = async function() {
-      const btn = document.getElementById("btn-submit-import");
-      const rawText = document.getElementById("import-json-textarea").value.trim();
-      if (!rawText) {
-        showToast("Please provide JSON data to import", "error");
-        return;
-      }
-
-      let parsed;
-      try {
-        parsed = JSON.parse(rawText);
-      } catch (e) {
-        showToast("Invalid JSON format", "error");
-        return;
-      }
-
-      btn.innerText = "Importing...";
-      btn.disabled = true;
-
-      try {
-        let importedCount = 0;
-        const list = Array.isArray(parsed) ? parsed : (parsed.people || parsed.contacts || [parsed]);
-        for (const item of list) {
-          if (item.name) {
-            await apiRequest("/api/people", "POST", {
-              name: item.name,
-              birthday: item.birthday || null,
-              note: item.note || item.notes?.[0] || null,
-            });
-            importedCount++;
-          }
-        }
-        showToast(`Successfully imported ${importedCount} contact(s)!`);
-        closeModal();
-        await loadPeople();
-        await loadDashboard();
-        await loadReminders();
-      } catch (err) {
-        showToast(err.message, "error");
-      } finally {
-        btn.innerText = "Import Now";
-        btn.disabled = false;
-      }
-    };
+      return map[m] || m;
+    }
 
     async function loadReminders() {
       const container = document.getElementById("reminders-list-container");
@@ -1519,15 +1511,16 @@
         if (res.user) {
           document.getElementById("profile-name-input").value = res.user.name || "";
           if (res.user.birthday) {
+            document.getElementById("profile-birthday-input").value = res.user.birthday;
             const parts = res.user.birthday.split(/[-/.]/);
             if (parts.length >= 2) {
               const m = parts[0].padStart(2, "0");
               const d = parts[1].padStart(2, "0");
-              const monthEl = document.getElementById("profile-bday-month");
-              const dayEl = document.getElementById("profile-bday-day");
-              if (monthEl) monthEl.value = m;
-              if (dayEl) dayEl.value = d;
+              document.getElementById("profile-birthday-display").value = `${getMonthName(m)} ${parseInt(d, 10)}`;
             }
+          } else {
+            document.getElementById("profile-birthday-input").value = "";
+            document.getElementById("profile-birthday-display").value = "";
           }
         }
       } catch (err) {
@@ -1540,10 +1533,8 @@
       btn.innerText = "Saving...";
       btn.disabled = true;
 
-      const name = document.getElementById("profile-name-input").value;
-      const m = document.getElementById("profile-bday-month")?.value;
-      const d = document.getElementById("profile-bday-day")?.value;
-      const birthday = (m && d) ? `${m}-${d}` : null;
+      const name = document.getElementById("profile-name-input").value.trim();
+      const birthday = document.getElementById("profile-birthday-input").value.trim() || null;
 
       try {
         await apiRequest("/api/profile", "PUT", { name, birthday, timezone: "Asia/Tehran" });
