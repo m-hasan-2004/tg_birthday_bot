@@ -2,22 +2,26 @@ name: Reminder Notification Cron
 
 on:
   schedule:
-    # Runs every 5 minutes
     - cron: '*/5 * * * *'
   workflow_dispatch:
+
+concurrency:
+  group: cron-runner
+  cancel-in-progress: true
 
 jobs:
   trigger-reminders:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Trigger Vercel /api/cron every minute
+      - name: Continuous 60s Reminder Dispatch Loop
         run: |
-          echo "Starting 1-minute precision reminder dispatch loop..."
-          for i in {1..5}; do
-            echo "Dispatch iteration $i at $(date)"
-            curl -s -X POST "https://tg-birthday-bot.vercel.app/api/cron" || curl -s "https://tg-birthday-bot.vercel.app/api/cron"
-            if [ $i -lt 5 ]; then
-              sleep 60
-            fi
+          echo "Starting continuous 60-second reminder dispatch loop..."
+          # Loop for 15 minutes (900 seconds), pinging /api/cron every 60 seconds
+          END_TIME=$((SECONDS + 900))
+          while [ $SECONDS -lt $END_TIME ]; do
+            echo "[$(date -u)] Pinging /api/cron..."
+            curl -s -f -X POST "https://tg-birthday-bot.vercel.app/api/cron" || curl -s -f "https://tg-birthday-bot.vercel.app/api/cron"
+            sleep 60
           done
-          echo "Done."
+          echo "Dispatch cycle complete."
