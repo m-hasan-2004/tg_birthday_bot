@@ -930,62 +930,26 @@ Telegram will provide the Mini App entry point for the bot.
 
 ---
 
-# 16. Configure Scheduled Reminders (Free 15-Minute Cron)
+# 16. Configure Scheduled Reminders (Free 1-Minute Cron via Cron-Job.org)
 
 The application uses `/api/cron` to process:
-* due reminders
-* birthday notifications
-* scheduled alerts
+* Due one-time and recurring reminders
+* Birthday notifications and notes
+* Scheduled calendar alerts
 
-### 🚀 Fixed: Vercel Free Setup & 15-Minute Cron
+### 🚀 Production Setup via Cron-Job.org (100% Free & Real-Time)
 
-#### 📋 What Was Implemented:
-* **Removed Vercel Cron Limitation from `vercel.json`**:
-  Removed the `crons` block from `vercel.json` so Vercel Hobby will never reject builds or hit the once-per-day limit.
-* **Added Automated 15-Minute Free Scheduler**:
-  Created `.github/workflows/cron.yml` which runs automatically on GitHub Actions every 15 minutes (`*/15 * * * *`) with $0 cost and no third-party subscriptions.
-  Authenticates directly with `/api/cron` using your `CRON_SECRET`.
-* **Updated Documentation**:
-  Added complete setup steps to Section 16 of `DEPLOYMENT.md`.
-* **Pushed to GitHub**:
-  Commit `bd2ff3e` is pushed to main on [GitHub](https://github.com/m-hasan-2004/tg_birthday_bot).
+To ensure notifications trigger on the exact minute without delays or server costs:
 
----
-
-### ⚙️ How to Activate the 15-Minute Trigger on GitHub:
-
-1. Go to your GitHub repository: [tg_birthday_bot/settings/secrets/actions](https://github.com/m-hasan-2004/tg_birthday_bot/settings/secrets/actions)
-2. Add two repository secrets:
-   * **`APP_URL`**: Your Vercel deployment URL (e.g. `https://your-app.vercel.app`)
-   * **`CRON_SECRET`**: The same `CRON_SECRET` string configured in your Vercel environment variables.
-3. Your reminders will now be checked and dispatched every 15 minutes completely free.
-
----
-
-### Alternative: External Free Cron Service (e.g. Cron-Job.org)
-
-If you prefer an external monitoring service:
-
-1. Create a free account at [cron-job.org](https://cron-job.org/).
-2. Create a new cron job:
-   * **Title**: `Birthday Reminders Trigger`
-   * **URL**: `https://YOUR-APP.vercel.app/api/cron`
-   * **Schedule**: Every 15 minutes (`*/15 * * * *`)
+1. Create a free account at [cron-job.org](https://cron-job.org/) (no credit card required).
+2. Click **Create Cronjob**:
+   * **Title**: `Birthday Bot Reminders`
+   * **URL**: `https://tg-birthday-bot.vercel.app/api/cron` (replace with your Vercel URL)
+   * **Schedule**: `Every 1 minute` (select "Every minute" or `* * * * *`)
    * **Request Method**: `POST` (or `GET`)
-   * **Headers**: Add header `Authorization: Bearer YOUR_CRON_SECRET` (or append `?secret=YOUR_CRON_SECRET` to URL).
-3. Save the job.
+3. Click **Create** / **Save**.
 
----
-
-## 16.1 Cron Security
-
-The `/api/cron` endpoint validates requests:
-
-```typescript
-const isAuthorized = authHeader === `Bearer ${env.CRON_SECRET}` || querySecret === env.CRON_SECRET;
-```
-
-Unauthorized requests receive `401 Unauthorized`. Keep `CRON_SECRET` secret and configure it in your Vercel environment variables and scheduler settings.
+Your bot will now process and deliver all scheduled reminders in real-time with 1-minute precision completely free.
 
 ---
 
