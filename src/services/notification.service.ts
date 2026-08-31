@@ -2,9 +2,10 @@ import { and, eq, lte, sql } from "drizzle-orm";
 import { Bot, InlineKeyboard } from "grammy";
 import { DateTime } from "luxon";
 import { db, DB } from "../db/index.js";
-import { users, people, reminders, birthdayReminders, notificationLogs } from "../db/schema.js";
+import { users, people, reminders, birthdayReminders, notificationLogs, notes } from "../db/schema.js";
 import { formatBirthday, getBirthdayReminderTarget, getNextBirthday, getNextReminderOccurrence, isValidTimezone } from "../utils/dates.js";
 import { logger } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 export class NotificationService {
   constructor(private readonly database: DB = db) {}
@@ -155,7 +156,7 @@ export class NotificationService {
     for (const item of bdayRemindersList) {
       if (!item.birthday) continue;
 
-      const userZone = isValidTimezone(item.userTimezone) ? item.userTimezone : "Europe/Berlin";
+      const userZone = isValidTimezone(item.userTimezone) ? item.userTimezone : (env.DEFAULT_TIMEZONE || "Asia/Tehran");
       const nowInUserZone = DateTime.fromJSDate(asOfDate).setZone(userZone);
 
       // Determine next birthday occurrence
@@ -176,7 +177,7 @@ export class NotificationService {
       if (!scheduledTarget) continue;
 
       // Check if scheduled time is due (<= now) and was scheduled for today/past in this window
-      // (within the last 24 hours to prevent firing stale reminders from ancient dates)
+      // (within the last 48 hours to prevent firing stale reminders from ancient dates)
       const isDue = nowInUserZone >= scheduledTarget;
       const isRecent = nowInUserZone.diff(scheduledTarget, "hours").hours < 48;
 
@@ -186,20 +187,31 @@ export class NotificationService {
         const alreadyLogged = await this.isNotificationLogged(notificationKey);
         if (alreadyLogged) continue;
 
+        // Fetch person notes
+        const personNotesList = await this.database
+          .select({ content: notes.content })
+          .from(notes)
+          .where(eq(notes.personId, item.personId));
+        const notesStr = personNotesList.map((n: { content: string }) => n.content.trim()).filter(Boolean).join("\n• ");
+
         // Build notification text
         let messageText = "";
         if (item.daysBefore === 0) {
-          messageText = `🎂 <b>Happy Birthday Reminder!</b>\n\nToday is <b>${escapeHtml(
+          messageText = `🎂 <b>Birthday Reminder</b>\n\nToday is <b>${escapeHtml(
             item.personName
-          )}</b>'s birthday! 🎉`;
+          )}</b>'s birthday (${escapeHtml(formatBirthday(item.birthday))})! Don't forget! 🎉`;
         } else if (item.daysBefore === 1) {
-          messageText = `🎂 <b>Birthday Reminder</b>\n\n<b>${escapeHtml(
+          messageText = `🎂 <b>Birthday Reminder</b>\n\nBirthday of <b>${escapeHtml(
             item.personName
-          )}</b>'s birthday is tomorrow!\n\n${formatBirthday(item.birthday)}`;
+          )}</b> is tomorrow at <b>${escapeHtml(formatBirthday(item.birthday))}</b>! Don't forget!`;
         } else {
-          messageText = `🎂 <b>Birthday Reminder</b>\n\n<b>${escapeHtml(
+          messageText = `🎂 <b>Birthday Reminder</b>\n\nBirthday of <b>${escapeHtml(
             item.personName
-          )}</b>'s birthday is in ${item.daysBefore} days!\n\n${formatBirthday(item.birthday)}`;
+          )}</b> is at <b>${escapeHtml(formatBirthday(item.birthday))}</b> (${item.daysBefore} days before)! Don't forget!`;
+        }
+
+        if (notesStr) {
+          messageText += `\n\n📝 <b>Note:</b>\n• ${escapeHtml(notesStr)}`;
         }
 
         const keyboard = new InlineKeyboard().text(

@@ -471,8 +471,7 @@
       <span id="header-badge" class="brand-badge hidden">ADMIN</span>
     </div>
     <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
-      <button class="btn btn-secondary btn-sm btn-square" onclick="openImportModal()" title="Import File">📁 Import</button>
-      <button class="btn btn-sm btn-square" onclick="openAddPersonModal()" title="Add Person">➕ Add</button>
+      <button class="btn btn-sm btn-square" onclick="openAddPersonModal()" title="Add Person">➕ Add Person</button>
     </div>
   </header>
 
@@ -481,8 +480,8 @@
     <!-- View 1: Normal Dashboard -->
     <section id="view-dashboard" class="tab-view">
       <div class="glass-card" style="margin-bottom: 12px;">
-        <h2 id="greeting-title" style="font-size: 1.25rem; margin-bottom: 4px;">Good day! 👋</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">Welcome to your personal memory & reminder assistant.</p>
+        <h2 id="greeting-title" style="font-size: 1.2rem; margin-bottom: 4px;">Hello, good day! 👋</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Welcome to your personal reminder.</p>
       </div>
 
       <!-- Stats Grid -->
@@ -565,8 +564,29 @@
           <input id="profile-name-input" class="input-control" type="text" />
         </div>
         <div class="input-group">
-          <label>Birthday (MM-dd)</label>
-          <input id="profile-birthday-input" class="input-control" type="text" placeholder="09-14" />
+          <label>Birthday</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="profile-bday-month" class="input-control" style="flex: 1;">
+              <option value="">Month</option>
+              <option value="01">January (01)</option>
+              <option value="02">February (02)</option>
+              <option value="03">March (03)</option>
+              <option value="04">April (04)</option>
+              <option value="05">May (05)</option>
+              <option value="06">June (06)</option>
+              <option value="07">July (07)</option>
+              <option value="08">August (08)</option>
+              <option value="09">September (09)</option>
+              <option value="10">October (10)</option>
+              <option value="11">November (11)</option>
+              <option value="12">December (12)</option>
+            </select>
+            <select id="profile-bday-day" class="input-control" style="flex: 1;">
+              <option value="">Day</option>
+              ${Array.from({length: 31}, (_, i) => `<option value="${String(i+1).padStart(2, '0')}">${i+1}</option>`).join('')}
+            </select>
+          </div>
+          <input id="profile-birthday-input" type="hidden" />
         </div>
         <button id="btn-save-profile" class="btn btn-full" onclick="saveProfile()">Save Profile</button>
       </div>
@@ -899,7 +919,6 @@
                   <div class="item-title">${escapeHtml(r.title)}</div>
                   <div class="item-subtitle">${r.dateStr} · ${r.timeStr}${r.personName ? " (👤 " + escapeHtml(r.personName) + ")" : ""}</div>
                 </div>
-                <button class="btn btn-sm btn-success" onclick="completeReminder('${r.id}')">✓ Done</button>
               </div>
             `).join("");
           } else {
@@ -1461,9 +1480,8 @@
                 <div class="item-title">${escapeHtml(r.title)}</div>
                 <div class="item-subtitle">${r.dateStr} at ${r.timeStr}${r.personName ? " (👤 " + escapeHtml(r.personName) + ")" : ""}</div>
               </div>
-              <div style="display: flex; gap: 6px;">
-                <button class="btn btn-sm btn-success" onclick="completeReminder('${r.id}')">✓</button>
-                <button class="btn btn-secondary btn-sm" onclick="deleteReminder('${r.id}')">🗑</button>
+              <div>
+                <button class="btn btn-secondary btn-sm" onclick="deleteReminder('${r.id}')" title="Delete">🗑</button>
               </div>
             </div>
           `).join("");
@@ -1481,17 +1499,6 @@
         container.innerHTML = `<p style="color: var(--danger);">${escapeHtml(err.message)}</p>`;
       }
     }
-
-    window.completeReminder = async function(id) {
-      try {
-        await apiRequest(`/api/reminders/${id}/complete`, "POST");
-        showToast("Reminder completed!");
-        loadReminders();
-        loadDashboard();
-      } catch (err) {
-        showToast(err.message, "error");
-      }
-    };
 
     window.deleteReminder = async function(id) {
       if (!confirm("Delete this reminder?")) return;
@@ -1511,7 +1518,17 @@
         const res = await apiRequest("/api/profile");
         if (res.user) {
           document.getElementById("profile-name-input").value = res.user.name || "";
-          document.getElementById("profile-birthday-input").value = res.user.birthday || "";
+          if (res.user.birthday) {
+            const parts = res.user.birthday.split(/[-/.]/);
+            if (parts.length >= 2) {
+              const m = parts[0].padStart(2, "0");
+              const d = parts[1].padStart(2, "0");
+              const monthEl = document.getElementById("profile-bday-month");
+              const dayEl = document.getElementById("profile-bday-day");
+              if (monthEl) monthEl.value = m;
+              if (dayEl) dayEl.value = d;
+            }
+          }
         }
       } catch (err) {
         showToast(err.message, "error");
@@ -1524,7 +1541,9 @@
       btn.disabled = true;
 
       const name = document.getElementById("profile-name-input").value;
-      const birthday = document.getElementById("profile-birthday-input").value;
+      const m = document.getElementById("profile-bday-month")?.value;
+      const d = document.getElementById("profile-bday-day")?.value;
+      const birthday = (m && d) ? `${m}-${d}` : null;
 
       try {
         await apiRequest("/api/profile", "PUT", { name, birthday, timezone: "Asia/Tehran" });
