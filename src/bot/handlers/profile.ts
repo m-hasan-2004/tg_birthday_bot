@@ -203,6 +203,9 @@ profileHandler.callbackQuery("profile_edit_tz", async (ctx) => {
   });
 
   const keyboard = new InlineKeyboard()
+    .text("🇮🇷 Asia/Tehran", "set_tz_Asia/Tehran")
+    .text("🇦🇪 Asia/Dubai", "set_tz_Asia/Dubai")
+    .row()
     .text("Europe/Berlin", "set_tz_Europe/Berlin")
     .text("Europe/London", "set_tz_Europe/London")
     .row()
@@ -210,10 +213,7 @@ profileHandler.callbackQuery("profile_edit_tz", async (ctx) => {
     .text("America/New_York", "set_tz_America/New_York")
     .row()
     .text("America/Los_Angeles", "set_tz_America/Los_Angeles")
-    .text("America/Chicago", "set_tz_America/Chicago")
-    .row()
     .text("Asia/Tokyo", "set_tz_Asia/Tokyo")
-    .text("Asia/Dubai", "set_tz_Asia/Dubai")
     .row()
     .text("UTC", "set_tz_UTC")
     .row()

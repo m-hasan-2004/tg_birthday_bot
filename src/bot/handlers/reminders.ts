@@ -471,10 +471,179 @@ remindersHandler.callbackQuery("rem_wiz_onetime", async (ctx) => {
   });
 
   const keyboard = new InlineKeyboard().text("← Back", "rem_wizard_start");
-  await ctx.editMessageText("⏰ <b>One-Time Reminder</b>\n\nWhat should I remind you about?", {
+  await ctx.editMessageText("⏰ <b>One-Time Reminder</b>\n\nWhat should I remind you about? (Type your reminder title/message):", {
     parse_mode: "HTML",
     reply_markup: keyboard,
   });
+});
+
+// Date Preset Callbacks
+remindersHandler.callbackQuery(/^rem_date_preset_(today|tomorrow|in2days|in1week)$/, async (ctx) => {
+  if (!ctx.user) return;
+  const preset = ctx.match[1];
+  await ctx.answerCallbackQuery();
+
+  const userZone = isValidTimezone(ctx.user.timezone) ? ctx.user.timezone : "Asia/Tehran";
+  const now = DateTime.now().setZone(userZone);
+  let targetDate: DateTime;
+
+  if (preset === "today") targetDate = now;
+  else if (preset === "tomorrow") targetDate = now.plus({ days: 1 });
+  else if (preset === "in2days") targetDate = now.plus({ days: 2 });
+  else targetDate = now.plus({ days: 7 });
+
+  const dateStr = targetDate.toFormat("yyyy-MM-dd");
+  const state = await userService.getSessionState(ctx.user.id);
+  const tempData = state?.tempData || {};
+  tempData.dateStr = dateStr;
+
+  await userService.setSessionState(ctx.user.id, {
+    currentStep: "ADD_REM_TIME",
+    tempData,
+  });
+
+  const keyboard = getTimePresetKeyboard("rem_time_preset");
+  await ctx.editMessageText(`Date: <b>${escapeHtml(dateStr)}</b>\n\nWhat time? (Or type any time like <code>17:25</code>)`, {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
+});
+
+// Date Picker Callbacks
+remindersHandler.callbackQuery("rem_date_picker", async (ctx) => {
+  if (!ctx.user) return;
+  await ctx.answerCallbackQuery();
+
+  const keyboard = getMonthPickerKeyboard("rem_date_pick", false);
+  keyboard.row().text("← Back", "menu_reminders");
+
+  await ctx.editMessageText("📅 <b>Choose Month:</b>", {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
+});
+
+remindersHandler.callbackQuery(/^rem_date_pick_m_(\d{2})$/, async (ctx) => {
+  if (!ctx.user) return;
+  const month = ctx.match[1];
+  await ctx.answerCallbackQuery();
+
+  await ctx.editMessageText(`📅 <b>Select Day for Month ${month}:</b>`, {
+    parse_mode: "HTML",
+    reply_markup: getDayPickerKeyboard("rem_date_pick", month),
+  });
+});
+
+remindersHandler.callbackQuery(/^rem_date_pick_d_(\d{2})_(\d{2})$/, async (ctx) => {
+  if (!ctx.user) return;
+  const month = ctx.match[1];
+  const day = ctx.match[2];
+  await ctx.answerCallbackQuery();
+
+  const userZone = isValidTimezone(ctx.user.timezone) ? ctx.user.timezone : "Asia/Tehran";
+  const year = DateTime.now().setZone(userZone).year;
+  const dateStr = `${year}-${month}-${day}`;
+
+  const state = await userService.getSessionState(ctx.user.id);
+  const tempData = state?.tempData || {};
+  tempData.dateStr = dateStr;
+
+  await userService.setSessionState(ctx.user.id, {
+    currentStep: "ADD_REM_TIME",
+    tempData,
+  });
+
+  const keyboard = getTimePresetKeyboard("rem_time_preset");
+  await ctx.editMessageText(`Date: <b>${escapeHtml(dateStr)}</b>\n\nWhat time? (Or type any time like <code>17:25</code>)`, {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
+});
+
+// Time Preset Callback
+remindersHandler.callbackQuery(/^rem_time_preset_(.+)$/, async (ctx) => {
+  if (!ctx.user) return;
+  const timeStr = ctx.match[1];
+  await ctx.answerCallbackQuery();
+
+  const state = await userService.getSessionState(ctx.user.id);
+  const tempData = state?.tempData || {};
+  tempData.timeStr = timeStr;
+
+  const peopleList = await personService.listPeopleByUser(ctx.user.id);
+  const keyboard = new InlineKeyboard();
+  for (const p of peopleList) {
+    keyboard.text(p.name, `rem_set_person_${p.id}`).row();
+  }
+  keyboard.text("Nobody", "rem_set_person_none").row();
+  keyboard.text("← Back", "menu_reminders");
+
+  await userService.setSessionState(ctx.user.id, {
+    currentStep: "ADD_REM_PERSON",
+    tempData,
+  });
+
+  await ctx.editMessageText("Who is this reminder for?", {
+    reply_markup: keyboard,
+  });
+});
+
+// Person Chosen Callback
+remindersHandler.callbackQuery(/^rem_set_person_(.+)$/, async (ctx) => {
+  if (!ctx.user) return;
+  const personParam = ctx.match[1];
+  await ctx.answerCallbackQuery();
+
+  const state = await userService.getSessionState(ctx.user.id);
+  const tempData = state?.tempData || {};
+  if (personParam !== "none") {
+    tempData.personId = personParam;
+  }
+
+  await userService.setSessionState(ctx.user.id, {
+    currentStep: "ADD_REM_REPEAT",
+    tempData,
+  });
+
+  await ctx.editMessageText("Does this reminder repeat?", {
+    reply_markup: getRecurrenceKeyboard("rem_recur"),
+  });
+});
+
+// Recurrence Chosen & Final Reminder Creation
+remindersHandler.callbackQuery(/^rem_recur_(none|daily|weekly|monthly|yearly)$/, async (ctx) => {
+  if (!ctx.user) return;
+  const repeatType = ctx.match[1] as "none" | "daily" | "weekly" | "monthly" | "yearly";
+  await ctx.answerCallbackQuery();
+
+  const state = await userService.getSessionState(ctx.user.id);
+  const tempData = state?.tempData || {};
+  const userZone = isValidTimezone(ctx.user.timezone) ? ctx.user.timezone : "Asia/Tehran";
+
+  const title = String(tempData.title || "Reminder");
+  const dateStr = String(tempData.dateStr || DateTime.now().setZone(userZone).toFormat("yyyy-MM-dd"));
+  const timeStr = String(tempData.timeStr || "09:00");
+
+  const dt = DateTime.fromISO(`${dateStr}T${timeStr}:00`, { zone: userZone });
+  const scheduledAt = dt.isValid ? dt.toJSDate() : new Date();
+
+  await reminderService.createReminder(ctx.user.id, {
+    title,
+    scheduledAt,
+    personId: tempData.personId ? String(tempData.personId) : null,
+    repeatType,
+  });
+
+  await userService.clearSessionState(ctx.user.id);
+
+  const keyboard = new InlineKeyboard().text("⏰ View Reminders", "menu_reminders");
+  await ctx.editMessageText(
+    `✅ <b>Reminder created!</b>\n\n<b>${escapeHtml(title)}</b>\n📅 ${escapeHtml(dateStr)} at ${escapeHtml(timeStr)} (${escapeHtml(userZone)})`,
+    {
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    }
+  );
 });
 
 // Delete Reminder
