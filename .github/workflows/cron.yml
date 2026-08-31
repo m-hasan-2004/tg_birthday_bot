@@ -10,8 +10,14 @@ jobs:
   trigger-reminders:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel /api/cron
+      - name: Trigger Vercel /api/cron every minute
         run: |
-          echo "Triggering birthday and reminder notification dispatch..."
-          curl -s -X POST "https://tg-birthday-bot.vercel.app/api/cron" || curl -s "https://tg-birthday-bot.vercel.app/api/cron"
+          echo "Starting 1-minute precision reminder dispatch loop..."
+          for i in {1..5}; do
+            echo "Dispatch iteration $i at $(date)"
+            curl -s -X POST "https://tg-birthday-bot.vercel.app/api/cron" || curl -s "https://tg-birthday-bot.vercel.app/api/cron"
+            if [ $i -lt 5 ]; then
+              sleep 60
+            fi
+          done
           echo "Done."
