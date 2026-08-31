@@ -955,8 +955,16 @@
         const notes = data.notes || [];
 
         let notesHtml = notes.length > 0
-          ? notes.map(n => `<div style="background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 0.85rem;">${escapeHtml(n.content)}</div>`).join("")
-          : `<p style="color: var(--text-muted); font-size: 0.85rem;">No notes yet.</p>`;
+          ? notes.map(n => `
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <div style="font-size: 0.85rem; flex: 1; word-break: break-word;">${escapeHtml(n.content)}</div>
+              <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                <button class="btn btn-secondary btn-sm" style="padding: 3px 6px; font-size: 0.75rem;" onclick="openEditNoteModal('${p.id}', '${n.id}', '${escapeHtml(n.content).replace(/'/g, "\\'")}')" title="Edit Note">✏️</button>
+                <button class="btn btn-danger btn-sm" style="padding: 3px 6px; font-size: 0.75rem;" onclick="deleteNote('${p.id}', '${n.id}')" title="Delete Note">🗑</button>
+              </div>
+            </div>
+          `).join("")
+          : `<p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px;">No notes yet.</p>`;
 
         document.getElementById("modal-body").innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -964,12 +972,15 @@
               <h3 style="font-size: 1.2rem;">👤 ${escapeHtml(p.name)}</h3>
               <p style="color: var(--text-muted); font-size: 0.85rem;">${p.birthday ? "🎂 Birthday: " + escapeHtml(p.formattedBirthday) : "No birthday set"}</p>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="openEditPersonModal('${p.id}')">✏️ Edit</button>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" onclick="openEditPersonModal('${p.id}')">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">🗑</button>
+            </div>
           </div>
 
           <div style="margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 0.85rem; font-weight: 600;">📝 Notes</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.9rem; font-weight: 600;">📝 Notes</span>
               <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openAddNoteModal('${p.id}')">➕ Add Note</button>
             </div>
             <div>${notesHtml}</div>
@@ -1048,7 +1059,20 @@
       try {
         const data = await apiRequest(`/api/people/${personId}`);
         const p = data.person;
+        const notes = data.notes || [];
         const formattedDateVal = p.birthday ? `2026-${p.birthday}` : "";
+
+        let notesHtml = notes.length > 0
+          ? notes.map(n => `
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <div style="font-size: 0.85rem; flex: 1; word-break: break-word;">${escapeHtml(n.content)}</div>
+              <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                <button class="btn btn-secondary btn-sm" style="padding: 3px 6px; font-size: 0.75rem;" onclick="openEditNoteModal('${p.id}', '${n.id}', '${escapeHtml(n.content).replace(/'/g, "\\'")}', true)" title="Edit Note">✏️</button>
+                <button class="btn btn-danger btn-sm" style="padding: 3px 6px; font-size: 0.75rem;" onclick="deleteNote('${p.id}', '${n.id}', true)" title="Delete Note">🗑</button>
+              </div>
+            </div>
+          `).join("")
+          : `<p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px;">No notes yet.</p>`;
 
         document.getElementById("modal-body").innerHTML = `
           <h3 style="margin-bottom: 12px;">✏️ Edit Person</h3>
@@ -1060,9 +1084,18 @@
             <label>Birthday</label>
             <input id="edit-person-bday" class="input-control" type="date" value="${formattedDateVal}" style="color-scheme: dark;" />
           </div>
+
+          <div style="margin-top: 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.9rem; font-weight: 600;">📝 Notes</span>
+              <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openAddNoteModal('${p.id}', true)">➕ Add Note</button>
+            </div>
+            <div>${notesHtml}</div>
+          </div>
+
           <div style="display: flex; gap: 8px; margin-top: 14px;">
             <button id="btn-edit-person-save" class="btn btn-full" onclick="submitEditPerson('${p.id}')">Save Changes</button>
-            <button class="btn btn-secondary btn-full" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-secondary btn-full" onclick="openPersonDetailsModal('${p.id}')">Cancel</button>
           </div>
         `;
         document.getElementById("modal-backdrop").classList.remove("hidden");
@@ -1094,7 +1127,7 @@
       try {
         await apiRequest(`/api/people/${personId}`, "PUT", { name, birthday });
         showToast("Person updated!");
-        closeModal();
+        openPersonDetailsModal(personId);
         await loadPeople();
         await loadDashboard();
       } catch (err) {
@@ -1105,7 +1138,7 @@
       }
     };
 
-    window.openAddNoteModal = function(personId) {
+    window.openAddNoteModal = function(personId, fromEdit = false) {
       document.getElementById("modal-body").innerHTML = `
         <h3 style="margin-bottom: 12px;">📝 Add Note</h3>
         <div class="input-group">
@@ -1113,14 +1146,14 @@
           <textarea id="new-note-text" class="input-control" rows="3" placeholder="Enter personal note..."></textarea>
         </div>
         <div style="display: flex; gap: 8px; margin-top: 14px;">
-          <button id="btn-submit-note" class="btn btn-full" onclick="submitAddNote('${personId}')">Add Note</button>
-          <button class="btn btn-secondary btn-full" onclick="openPersonDetailsModal('${personId}')">Back</button>
+          <button id="btn-submit-note" class="btn btn-full" onclick="submitAddNote('${personId}', ${fromEdit})">Save Note</button>
+          <button class="btn btn-secondary btn-full" onclick="${fromEdit ? `openEditPersonModal('${personId}')` : `openPersonDetailsModal('${personId}')`}">Back</button>
         </div>
       `;
       document.getElementById("modal-backdrop").classList.remove("hidden");
     };
 
-    window.submitAddNote = async function(personId) {
+    window.submitAddNote = async function(personId, fromEdit = false) {
       const content = document.getElementById("new-note-text").value.trim();
       if (!content) return showToast("Note cannot be empty", "error");
 
@@ -1131,7 +1164,53 @@
       try {
         await apiRequest(`/api/people/${personId}/notes`, "POST", { content });
         showToast("Note added!");
-        openPersonDetailsModal(personId);
+        if (fromEdit) openEditPersonModal(personId);
+        else openPersonDetailsModal(personId);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    window.openEditNoteModal = function(personId, noteId, content, fromEdit = false) {
+      document.getElementById("modal-body").innerHTML = `
+        <h3 style="margin-bottom: 12px;">✏️ Edit Note</h3>
+        <div class="input-group">
+          <label>Note Content</label>
+          <textarea id="edit-note-text" class="input-control" rows="3">${escapeHtml(content)}</textarea>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button id="btn-edit-note" class="btn btn-full" onclick="submitEditNote('${personId}', '${noteId}', ${fromEdit})">Save Changes</button>
+          <button class="btn btn-secondary btn-full" onclick="${fromEdit ? `openEditPersonModal('${personId}')` : `openPersonDetailsModal('${personId}')`}">Cancel</button>
+        </div>
+      `;
+      document.getElementById("modal-backdrop").classList.remove("hidden");
+    };
+
+    window.submitEditNote = async function(personId, noteId, fromEdit = false) {
+      const content = document.getElementById("edit-note-text").value.trim();
+      if (!content) return showToast("Note cannot be empty", "error");
+
+      const btn = document.getElementById("btn-edit-note");
+      btn.innerText = "Saving...";
+      btn.disabled = true;
+
+      try {
+        await apiRequest(`/api/notes/${noteId}`, "PUT", { content });
+        showToast("Note updated!");
+        if (fromEdit) openEditPersonModal(personId);
+        else openPersonDetailsModal(personId);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    window.deleteNote = async function(personId, noteId, fromEdit = false) {
+      if (!confirm("Delete this note?")) return;
+      try {
+        await apiRequest(`/api/notes/${noteId}`, "DELETE");
+        showToast("Note deleted.");
+        if (fromEdit) openEditPersonModal(personId);
+        else openPersonDetailsModal(personId);
       } catch (err) {
         showToast(err.message, "error");
       }
@@ -1142,6 +1221,7 @@
       try {
         await apiRequest(`/api/people/${id}`, "DELETE");
         showToast("Person deleted.");
+        closeModal();
         loadPeople();
         loadDashboard();
       } catch (err) {

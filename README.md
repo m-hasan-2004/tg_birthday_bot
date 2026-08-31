@@ -1,93 +1,129 @@
 # 🎂 Birthday & Reminder Telegram Bot + Web App
 
-A **simple, fast, modern, production-ready Telegram Bot & Web App** for remembering birthdays, people, personal notes, and reminders.
+A **modern, full-stack, production-ready Telegram Bot & Glassmorphic Web App (Telegram Mini App)** for tracking birthdays, managing contacts, writing personal notes, and setting precise reminders.
 
 Built with **TypeScript**, **GrammY**, **Hono**, **PostgreSQL (Drizzle ORM)**, and **Luxon**.
 
 ---
 
-## 🌟 Core Features
+## 🌟 Core Features & Capabilities
 
-### 1. Telegram Experience
-* Use the application entirely through native Telegram buttons and commands (`/start`, `/menu`, `/admin`).
-* Manage contacts, track birthdays, write personal notes, and create recurring reminders.
-* **Step-by-Step Birthday Reminder Wizard**:
-  - Select Person
-  - View Person's Date (e.g. `September 14`)
-  - Select Reminder Occasions (`1 month before`, `1 week before`, `1 day before`, `On the day`)
-  - Select Reminder Time (`09:00`, `10:00`, `12:00`, `18:00`)
-  - Review Summary Screen $\rightarrow$ Save
-* **Unified Reminders Display**: Both scheduled one-time/recurring reminders and configured birthday reminders appear dynamically in your Reminders list.
+### 1. Telegram Bot Experience
+- **Interactive Inline Navigation**: Full graphical menu using Telegram Inline Keyboards (`/start`, `/menu`, `/reminders`, `/profile`, `/admin`).
+- **Complete Profile & Timezone Settings**:
+  - View profile details (Name, Birthday, Information, Timezone).
+  - Quick timezone presets including **`🇮🇷 Asia/Tehran`**, **`🇦🇪 Asia/Dubai`**, London, Berlin, Paris, New York, Los Angeles, Tokyo, and UTC.
+  - Interactive month/day birthday editor.
+- **Contact & Birthday Management**:
+  - Add and browse contacts with birthdays and notes.
+  - Quick search and overview of upcoming birthdays.
+- **Step-by-Step Reminder Wizard**:
+  - Person birthday reminder offsets (`On the day`, `1 day before`, `3 days before`, `1 week before`, `2 weeks before`, `1 month before`).
+  - One-time custom reminders with date presets (`Today`, `Tomorrow`, `In 2 days`, `In 1 week`, or calendar picker) and custom time inputs (e.g. `17:25`).
+  - Recurrence settings (`none`, `daily`, `weekly`, `monthly`, `yearly`).
 
-### 2. Web App Experience
-* Fast, glassmorphic **Telegram Mini App / Web App** at `/app`.
-* Clean 4-tab user navigation: `🏠 Home`, `👥 People`, `⏰ Reminders`, `👤 Profile` (+ `🛡️ Admin` for owner/admin).
-* Real-time bidirectional sync with Telegram bot: everything created in Telegram instantly appears in the Web App and vice versa.
+### 2. Modern Glassmorphic Web App (Telegram Mini App)
+- **Universal Access**: Hosted at `/app` with dark-mode aesthetic and smooth transitions.
+- **Unified Navigation Tabs**:
+  - `🏠 Home / Dashboard`: Live statistics, upcoming birthdays countdown, and active reminders preview.
+  - `👥 People`: Full contact directory with birthday badges and instant actions.
+  - `⏰ Reminders`: Birthday reminder template chips (`🎯 On the day (0d)`, `⏰ 1d before`, `📅 3d before`, etc.) + Active reminders list with delete action.
+  - `👤 Profile`: Edit Name and Birthday using standard mobile date pickers.
+  - `🛡️ Admin`: System statistics, audit logs, and user management (for Owner & Admins).
+- **Mobile-Native Birthday Picker**:
+  - Integrates standard `<input type="date">` for native iOS rolling wheel and Android Material Date Picker on mobile devices.
+- **Comprehensive Notes Management**:
+  - Click on any contact from **Home** or **People** tab to open the Person Details view.
+  - Full Note CRUD: **Add Note (`➕`)**, **Edit Note (`✏️`)**, and **Delete Note (`🗑`)**.
+- **Real-Time Bidirectional Sync**: Changes made in the Telegram bot instantly reflect in the Web App and vice-versa.
+
+### 3. Notifications & Accurate Timing Engine
+- **Rich Message Formatting**:
+  - **Birthday Alerts**: Includes title `🎂 Birthday Reminder`, person's name, formatted date, and all associated personal notes!
+  - **Custom Reminders**: Formatted with `⏰ Reminder` followed by the reminder title.
+- **Exact Timing & Zero Offset Skew**:
+  - All reminders and dates are parsed and compared with exact timezone accuracy (defaulting to **`Asia/Tehran`**).
+- **1-Minute Precision Cron & Self-Healing Trigger**:
+  - Automated GitHub Actions workflow (`.github/workflows/cron.yml`) looping every 60 seconds.
+  - Bot middleware & Web App background triggers automatically evaluate and dispatch due reminders.
+  - Public unblocked `/api/cron` endpoint for external cron providers (e.g. cron-job.org).
 
 ---
 
-## 🛡️ Admin Access & Identity
+## 🛡️ Admin Controls & Access
 
-The application determines administrator access from the authenticated Telegram account.
-
-The initial application owner is configured through `OWNER_TELEGRAM_ID`:
+Admin access is resolved directly from the authenticated Telegram account:
 
 ```env
 OWNER_TELEGRAM_ID=5138117035
 ```
 
-### Role Resolution Logic:
-1. If Telegram ID matches `OWNER_TELEGRAM_ID` → **OWNER**
-2. Otherwise, if the user has an active **ADMIN** record → **ADMIN**
-3. Otherwise → **USER**
-
-* **Strict Separation & No Mode Switch**:
-  - **OWNER / ADMIN** accounts automatically receive the **Admin Panel**.
-  - Normal **USER** accounts automatically receive the **normal application**.
-  - Normal users receive `HTTP 403 Forbidden` on all `/api/admin/*` endpoints.
-  - The **OWNER** cannot be demoted by an **ADMIN**.
+- **Role Levels**:
+  - **Owner**: Full access; can manage admins, view system statistics, and inspect audit logs. Cannot be disabled or demoted.
+  - **Admin**: Elevated privileges to manage users and view statistics.
+  - **User**: Standard personal application access.
+- **Strict Role Isolation**: Admin endpoints (`/api/admin/*`) return `403 Forbidden` for standard users.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture & Stack
 
 ```text
-                    ┌────────────────────────┐
-                    │  Telegram Bot (Inline) │
-                    └───────────┬────────────┘
-                                │
-                                ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │                 Unified Hono / GrammY Server                │
-  │                                                             │
-  │   • POST /api/webhook       • Telegram Bot Handlers         │
-  │   • GET/POST /api/cron      • Notification Dispatcher       │
-  │   • POST /api/auth/*        • Telegram HMAC & Dev Auth      │
-  │   • GET/POST /api/admin/*   • Admin Stats, Users, Audits    │
-  │   • GET/POST /api/*         • Shared Application REST API   │
-  │   • GET /app                • Glassmorphic Frontend         │
-  └──────────────┬───────────────────────────────┬──────────────┘
-                 │                               │
-                 ▼                               ▼
-       ┌───────────────────┐           ┌───────────────────┐
-       │   PostgreSQL DB   │           │    Web App / TMA  │
-       │   (Drizzle ORM)   │           │ (Telegram WebApp) │
-       └───────────────────┘           └───────────────────┘
+               ┌───────────────────────────────┐
+               │    Telegram Messenger UI      │
+               │ (Chat Bot & Telegram Mini App)│
+               └──────────────┬────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Universal Hono / Node.js Server             │
+│                                                             │
+│   • POST /api/webhook       • Grammy Bot Middleware & State │
+│   • GET/POST /api/cron      • Notification Dispatcher Engine│
+│   • POST /api/auth/*        • Telegram InitData Auth        │
+│   • GET/POST /api/admin/*   • Admin Management & Audits     │
+│   • GET/POST /api/people    • Contact & Note CRUD           │
+│   • GET/POST /api/reminders • Unified Reminder Engine       │
+│   • GET /app                • Glassmorphic SPA Frontend     │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+               ▼                               ▼
+     ┌───────────────────┐           ┌───────────────────┐
+     │  Neon PostgreSQL  │           │   GitHub Actions  │
+     │   (Drizzle ORM)   │           │ (1-Minute Cron)   │
+     └───────────────────┘           └───────────────────┘
 ```
+
+| Layer | Technology |
+| :--- | :--- |
+| **Language** | TypeScript (Strict Mode) |
+| **Telegram Framework** | [GrammY](https://grammy.dev/) |
+| **Web Server & REST API** | [Hono](https://hono.dev/) |
+| **Database & ORM** | [PostgreSQL (Neon)](https://neon.tech/) + [Drizzle ORM](https://orm.drizzle.team/) |
+| **Date & Timezone Engine** | [Luxon](https://moment.github.io/luxon/) |
+| **Testing** | [Vitest](https://vitest.dev/) (Unit & Integration Tests) |
 
 ---
 
-## 🛠️ Technology Stack
+## 🔌 REST API Overview
 
-| Layer | Technology | Purpose |
+| Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| **Language** | [TypeScript](https://www.typescriptlang.org/) (Strict Mode) | End-to-end type safety |
-| **Telegram Framework** | [GrammY](https://grammy.dev/) | Modern Telegram Bot & Webhooks |
-| **Web Server & API** | [Hono](https://hono.dev/) | High-performance universal serverless framework |
-| **Database & ORM** | [PostgreSQL](https://www.postgresql.org/) + [Drizzle ORM](https://orm.drizzle.team/) | Serverless database with zero-overhead queries |
-| **Date & Timezone** | [Luxon](https://moment.github.io/luxon/) | IANA timezones, leap years (Feb 29), and recurrence |
-| **Validation** | [Zod](https://zod.dev/) | Schema & environment variables validation |
-| **Test Runner** | [Vitest](https://vitest.dev/) | Fast automated unit, integration, and E2E tests |
+| `GET` | `/health` | Server health check |
+| `POST` | `/api/webhook` | Telegram Bot Webhook endpoint |
+| `GET/POST`| `/api/cron` | Dispatches all due birthday & custom reminders |
+| `POST` | `/api/auth/telegram` | Authenticates Telegram Mini App `initData` |
+| `GET` | `/api/dashboard` | Fetches dashboard stats, upcoming birthdays & reminders |
+| `GET/POST`| `/api/people` | List or create contacts |
+| `GET/PUT/DELETE`| `/api/people/:id` | View, update, or delete a contact |
+| `GET/POST`| `/api/people/:id/notes`| List or add notes to a contact |
+| `PUT/DELETE`| `/api/notes/:id` | Update or delete an existing note |
+| `GET/POST`| `/api/reminders` | List or create custom/birthday reminders |
+| `DELETE` | `/api/reminders/:id` | Delete a reminder |
+| `GET/PUT` | `/api/profile` | View or update user profile and timezone |
+| `GET` | `/api/admin/stats` | System statistics (Admin only) |
+| `GET` | `/api/admin/users` | User management list (Admin only) |
+| `GET` | `/api/admin/audit-logs`| Audit activity logs (Admin only) |
 
 ---
 
