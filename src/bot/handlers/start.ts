@@ -30,12 +30,11 @@ startHandler.command("start", async (ctx) => {
         `• Total Reminders: <b>${stats.totalReminders}</b>\n` +
         `• Audit Logs: <b>${stats.totalAuditLogs}</b>`;
 
-      const webAppUrl = env.WEB_APP_URL || (env.WEBHOOK_URL ? `${env.WEBHOOK_URL.replace(/\/$/, "")}/app` : "");
-      const adminKeyboard = new InlineKeyboard();
-      if (webAppUrl) {
-        adminKeyboard.webApp("🛡️ Open Admin Dashboard", webAppUrl).row();
-      }
-      adminKeyboard.text("🎂 Open Personal App", "open_menu");
+      const adminKeyboard = new InlineKeyboard()
+        .text("👥 Manage Users", "admin_users").row()
+        .text("📊 Detailed Statistics", "admin_stats")
+        .text("📜 Audit Logs", "admin_audits").row()
+        .text("🎂 Open Personal App", "open_menu");
 
       await ctx.reply(adminText, {
         parse_mode: "HTML",
@@ -47,7 +46,7 @@ startHandler.command("start", async (ctx) => {
     // Normal User -> Show standard menu
     await ctx.reply(`🎂 <b>Birthday Reminder</b>\n\nWelcome back, <b>${existingUser.name}</b>!`, {
       parse_mode: "HTML",
-      reply_markup: getMainMenuKeyboard(),
+      reply_markup: getMainMenuKeyboard(existingUser),
     });
     return;
   }
@@ -70,7 +69,9 @@ startHandler.command("start", async (ctx) => {
         `• Total Reminders: <b>${stats.totalReminders}</b>`,
       {
         parse_mode: "HTML",
-        reply_markup: new InlineKeyboard().text("🎂 Open Personal App", "open_menu"),
+        reply_markup: new InlineKeyboard()
+          .text("👥 Manage Users", "admin_users").row()
+          .text("🎂 Open Personal App", "open_menu"),
       }
     );
     return;

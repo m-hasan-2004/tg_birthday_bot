@@ -2,7 +2,7 @@ import { InlineKeyboard } from "grammy";
 import type { BirthdayReminder, Person } from "../../types/index.js";
 import { env } from "../../config/env.js";
 
-export function getMainMenuKeyboard(): InlineKeyboard {
+export function getMainMenuKeyboard(user?: { role?: string; telegramId?: string }): InlineKeyboard {
   const keyboard = new InlineKeyboard()
     .text("👥 People", "menu_people")
     .text("➕ Add Person", "menu_add_person")
@@ -10,6 +10,16 @@ export function getMainMenuKeyboard(): InlineKeyboard {
     .text("⏰ Reminders", "menu_reminders")
     .text("👤 My Profile", "menu_profile")
     .row();
+
+  const isOwnerOrAdmin =
+    user &&
+    (user.role === "owner" ||
+      user.role === "admin" ||
+      (env.OWNER_TELEGRAM_ID && String(user.telegramId) === env.OWNER_TELEGRAM_ID.trim()));
+
+  if (isOwnerOrAdmin) {
+    keyboard.text("🛡️ Admin Panel", "menu_admin").row();
+  }
 
   const webAppUrl = env.WEB_APP_URL || (env.WEBHOOK_URL ? `${env.WEBHOOK_URL.replace(/\/$/, "")}/app` : "");
   if (webAppUrl) {

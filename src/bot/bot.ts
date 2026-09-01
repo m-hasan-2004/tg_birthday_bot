@@ -14,6 +14,8 @@ import { remindersHandler } from "./handlers/reminders.js";
 import { textHandler } from "./handlers/text.js";
 import { notificationService } from "../services/notification.service.js";
 
+import { adminHandler } from "./handlers/admin.js";
+
 export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContext> {
   const bot = new Bot<BotContext>(token);
 
@@ -83,40 +85,9 @@ export function createBot(token: string = env.TELEGRAM_BOT_TOKEN): Bot<BotContex
     });
   });
 
-  // 3. /admin Command
-  bot.command("admin", async (ctx) => {
-    if (!ctx.user || (ctx.user.role !== "admin" && ctx.user.role !== "owner")) {
-      await ctx.reply("⛔ <b>Access Denied:</b> Administrator privileges required.", {
-        parse_mode: "HTML",
-      });
-      return;
-    }
-
-    const stats = await adminService.getSystemStats();
-    const text =
-      `🛡️ <b>Administrator Panel</b>\n\n` +
-      `<b>System Statistics:</b>\n` +
-      `• Total Users: <b>${stats.totalUsers}</b> (Active: ${stats.activeUsers}, Disabled: ${stats.disabledUsers})\n` +
-      `• Total Contacts: <b>${stats.totalPeople}</b>\n` +
-      `• Total Notes: <b>${stats.totalNotes}</b>\n` +
-      `• Total Reminders: <b>${stats.totalReminders}</b> (Pending: ${stats.pendingReminders})\n` +
-      `• Audit Logs: <b>${stats.totalAuditLogs}</b>`;
-
-    const webAppUrl = env.WEB_APP_URL || (env.WEBHOOK_URL ? `${env.WEBHOOK_URL.replace(/\/$/, "")}/app` : "");
-    const keyboard = new InlineKeyboard();
-    if (webAppUrl) {
-      keyboard.webApp("🛡️ Open Admin Dashboard", webAppUrl).row();
-    }
-    keyboard.text("← Back to Menu", "open_menu");
-
-    await ctx.reply(text, {
-      parse_mode: "HTML",
-      reply_markup: keyboard,
-    });
-  });
-
-  // 4. Register Handlers in order
+  // 3. Register Handlers in order
   bot.use(startHandler);
+  bot.use(adminHandler);
   bot.use(menuHandler);
   bot.use(profileHandler);
   bot.use(peopleHandler);

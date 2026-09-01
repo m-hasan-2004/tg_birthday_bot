@@ -14,12 +14,12 @@ menuHandler.callbackQuery("open_menu", async (ctx) => {
   try {
     await ctx.editMessageText(text, {
       parse_mode: "HTML",
-      reply_markup: getMainMenuKeyboard(),
+      reply_markup: getMainMenuKeyboard(ctx.user),
     });
   } catch {
     await ctx.reply(text, {
       parse_mode: "HTML",
-      reply_markup: getMainMenuKeyboard(),
+      reply_markup: getMainMenuKeyboard(ctx.user),
     });
   }
 });
