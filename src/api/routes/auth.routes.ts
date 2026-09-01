@@ -75,32 +75,23 @@ authRoutes.post("/telegram", async (c) => {
   }
 });
 
-// Browser Dev / Demo Login (For browser preview outside Telegram)
+// Browser Dev Login (Restricted exclusively to automated unit tests)
 authRoutes.post("/dev-login", async (c) => {
+  if (env.NODE_ENV === "production") {
+    return c.json({ error: "Unauthorized: Telegram authentication required." }, 401);
+  }
+
   try {
     let body: any = {};
     try {
       body = await c.req.json();
     } catch {
-      try {
-        const text = await c.req.text();
-        body = text ? JSON.parse(text) : {};
-      } catch {
-        body = {};
-      }
+      body = {};
     }
 
-    // In production or untrusted browser requests, always isolate to a standard guest demo user
-    // Never allow arbitrary claiming of owner/admin telegram ID via unauthenticated dev-login
-    let telegramId = "browser_guest";
-    let name = "Guest (Browser Demo)";
-    let role = "user";
-
-    if (env.NODE_ENV !== "production") {
-      telegramId = body.telegramId ? String(body.telegramId) : "dev_browser_user_1";
-      name = body.name || "Alex (Browser Tester)";
-      role = body.role || "user";
-    }
+    const telegramId = body.telegramId ? String(body.telegramId) : "dev_test_user";
+    const name = body.name || "Test User";
+    const role = body.role || "user";
 
     let user = await userService.findByTelegramId(telegramId);
     if (!user) {
@@ -115,13 +106,10 @@ authRoutes.post("/dev-login", async (c) => {
       return c.json({ error: "Account is disabled." }, 403);
     }
 
-    // In production, force token role to standard user if logged in via dev-login
-    const tokenRole = env.NODE_ENV === "production" ? "user" : user.role;
-
     const token = authService.createSessionToken({
       userId: user.id,
       telegramId: user.telegramId,
-      role: tokenRole as any,
+      role: user.role as any,
     });
 
     return c.json({
@@ -132,11 +120,11 @@ authRoutes.post("/dev-login", async (c) => {
         birthday: user.birthday,
         additionalInfo: user.additionalInfo,
         timezone: user.timezone,
-        role: tokenRole,
+        role: user.role,
       },
     });
   } catch (error: any) {
     logger.error("Error in /api/auth/dev-login:", error);
-    return c.json({ error: error?.message || "Dev login failed", details: String(error) }, 500);
+    return c.json({ error: error?.message || "Dev login failed" }, 500);
   }
 });

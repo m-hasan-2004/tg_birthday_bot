@@ -569,6 +569,37 @@
         <button id="btn-save-profile" class="btn btn-full" onclick="saveProfile()">Save Profile</button>
       </div>
     </section>
+
+    <!-- View 5: Admin Panel (Strictly for verified Telegram Admin/Owner) -->
+    <section id="view-admin" class="tab-view hidden">
+      <div class="glass-card" style="margin-bottom: 12px;">
+        <div class="card-header">
+          <div class="card-title">🛡️ System Statistics (PostgreSQL)</div>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminStats()">Refresh</button>
+        </div>
+        <div id="admin-stats-grid" class="stats-grid">
+          <div class="stat-box"><div class="stat-label">Users</div><div id="astat-users" class="stat-number">0</div></div>
+          <div class="stat-box"><div class="stat-label">Contacts</div><div id="astat-people" class="stat-number">0</div></div>
+          <div class="stat-box"><div class="stat-label">Notes</div><div id="astat-notes" class="stat-number">0</div></div>
+          <div class="stat-box"><div class="stat-label">Reminders</div><div id="astat-reminders" class="stat-number">0</div></div>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-bottom: 12px;">
+        <div class="card-header">
+          <div class="card-title">👥 User Management</div>
+        </div>
+        <input id="admin-user-search" class="input-control" type="text" placeholder="Search user by name or telegram ID..." style="margin-bottom: 10px; width: 100%;" oninput="debounce(loadAdminUsers, 400)()" />
+        <div id="admin-users-list" class="item-list"></div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-header">
+          <div class="card-title">📜 Audit Logs</div>
+        </div>
+        <div id="admin-audit-list" class="item-list"></div>
+      </div>
+    </section>
   </main>
 
   <!-- Bottom Navigation -->
@@ -588,6 +619,10 @@
     <button id="nav-tab-profile" class="nav-tab" onclick="showTab('profile')">
       <span class="icon">👤</span>
       <span>Profile</span>
+    </button>
+    <button id="nav-tab-admin" class="nav-tab hidden" onclick="showTab('admin')">
+      <span class="icon">🛡️</span>
+      <span>Admin</span>
     </button>
   </nav>
 
@@ -676,32 +711,6 @@
             localStorage.removeItem("auth_token");
             currentUser = null;
           }
-
-          // 3. Fallback for browser preview outside Telegram (guest demo)
-          try {
-            const res = await fetch("/api/auth/dev-login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                telegramId: "browser_guest",
-                name: "Guest User",
-                role: "user"
-              }),
-              signal: AbortSignal.timeout(12000),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (data.token) {
-              authToken = data.token;
-              localStorage.setItem("auth_token", authToken);
-              currentUser = data.user;
-              return authToken;
-            } else if (data.error) {
-              showToast(`Auth error: ${data.error}`, "error");
-            }
-          } catch (e) {
-            console.error("Dev login error:", e);
-            showToast("Server connection timeout (12s). Please check connection.", "error");
-          }
         } catch (e) {
           console.error("Authentication error:", e);
         } finally {
@@ -714,7 +723,7 @@
     }
 
     async function apiRequest(endpoint, method = "GET", body = null, isRetry = false) {
-      if (endpoint !== "/api/auth/dev-login" && endpoint !== "/api/auth/telegram") {
+      if (endpoint !== "/api/auth/telegram") {
         await ensureAuth();
       }
 
@@ -730,7 +739,7 @@
         const res = await fetch(endpoint, options);
 
         // Auto-retry on 401 Unauthorized once by re-authenticating
-        if (res.status === 401 && !isRetry && endpoint !== "/api/auth/dev-login" && endpoint !== "/api/auth/telegram") {
+        if (res.status === 401 && !isRetry && endpoint !== "/api/auth/telegram") {
           console.warn(`401 received on ${endpoint}, refreshing authentication...`);
           await ensureAuth(true);
           return apiRequest(endpoint, method, body, true);
@@ -778,6 +787,29 @@
 
     async function initApp() {
       await ensureAuth();
+
+      if (!currentUser || !authToken) {
+        // Render lock screen when opened outside Telegram
+        document.getElementById("app-root").innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; padding: 24px;">
+            <div style="font-size: 3.5rem; margin-bottom: 14px;">🔒</div>
+            <h2 style="margin-bottom: 8px; font-size: 1.3rem;">Telegram Authentication Required</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 320px; line-height: 1.5; margin-bottom: 20px;">
+              This application is a Telegram Mini App. Please open it directly from the Telegram Bot.
+            </p>
+          </div>
+        `;
+        const userNav = document.getElementById("user-nav");
+        if (userNav) userNav.classList.add("hidden");
+        return;
+      }
+
+      // Show Admin tab ONLY for verified admin / owner accounts
+      if (currentUser.role === "admin" || currentUser.role === "owner") {
+        const adminTabBtn = document.getElementById("nav-tab-admin");
+        if (adminTabBtn) adminTabBtn.classList.remove("hidden");
+      }
+
       showTab("dashboard");
       // Preload all tabs in background
       Promise.all([loadPeople(), loadReminders(), loadProfile()]).catch(() => {});
@@ -804,6 +836,9 @@
       if (tabName === "people") loadPeople().catch(e => console.error("Error loading people:", e));
       if (tabName === "reminders") loadReminders().catch(e => console.error("Error loading reminders:", e));
       if (tabName === "profile") loadProfile().catch(e => console.error("Error loading profile:", e));
+      if (tabName === "admin" && (currentUser?.role === "admin" || currentUser?.role === "owner")) {
+        loadAdminDashboard().catch(e => console.error("Error loading admin:", e));
+      }
     };
 
     function renderDashboard(data) {
@@ -814,6 +849,11 @@
         if (data.stats) {
           document.getElementById("stat-people").innerText = data.stats.peopleCount;
           document.getElementById("stat-reminders").innerText = data.stats.remindersCount;
+        }
+
+        if (currentUser.role === "admin" || currentUser.role === "owner") {
+          const adminTabBtn = document.getElementById("nav-tab-admin");
+          if (adminTabBtn) adminTabBtn.classList.remove("hidden");
         }
 
         // Upcoming Birthdays
@@ -1618,6 +1658,95 @@
         btn.disabled = false;
       }
     };
+
+    // ADMIN PANEL (Accessible strictly for verified Telegram Admin/Owner)
+    async function loadAdminDashboard() {
+      await loadAdminStats();
+      await loadAdminUsers();
+      await loadAdminAuditLogs();
+    }
+
+    async function loadAdminStats() {
+      try {
+        const data = await apiRequest("/api/admin/stats");
+        if (data.stats) {
+          document.getElementById("astat-users").innerText = data.stats.totalUsers;
+          document.getElementById("astat-people").innerText = data.stats.totalPeople;
+          document.getElementById("astat-notes").innerText = data.stats.totalNotes;
+          document.getElementById("astat-reminders").innerText = data.stats.totalReminders;
+        }
+      } catch (err) {
+        console.warn("Admin stats:", err);
+      }
+    }
+
+    async function loadAdminUsers() {
+      const container = document.getElementById("admin-users-list");
+      const search = document.getElementById("admin-user-search")?.value || "";
+      try {
+        const res = await apiRequest(`/api/admin/users?search=${encodeURIComponent(search)}`);
+        if (res.users && res.users.length > 0) {
+          container.innerHTML = res.users.map(u => `
+            <div class="list-item">
+              <div class="item-info">
+                <div class="item-title">${escapeHtml(u.name)} (${u.role}) ${u.isDisabled ? '<span style="color: var(--danger);">[Disabled]</span>' : ''}</div>
+                <div class="item-subtitle">TG: ${u.telegramId} · Contacts: ${u.peopleCount} · Reminders: ${u.remindersCount}</div>
+              </div>
+              <div>
+                ${u.role === 'owner' ? '<span style="font-size: 0.75rem; color: var(--text-muted);">Owner</span>' :
+                  u.isDisabled ?
+                    `<button class="btn btn-sm btn-success" onclick="toggleUserDisabled('${u.id}', false)">Enable</button>` :
+                    `<button class="btn btn-sm btn-danger" onclick="toggleUserDisabled('${u.id}', true)">Disable</button>`
+                }
+              </div>
+            </div>
+          `).join("");
+        } else {
+          container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">No users found.</p>`;
+        }
+      } catch (err) {
+        container.innerHTML = `<p style="color: var(--danger);">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    window.toggleUserDisabled = async function(userId, disable) {
+      const action = disable ? "disable" : "enable";
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+      try {
+        await apiRequest(`/api/admin/users/${userId}/${action}`, "POST");
+        showToast(`User ${action}d!`);
+        await loadAdminUsers();
+        await loadAdminStats();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    async function loadAdminAuditLogs() {
+      const container = document.getElementById("admin-audit-list");
+      try {
+        const res = await apiRequest("/api/admin/audit-logs?limit=10");
+        if (res.auditLogs && res.auditLogs.length > 0) {
+          container.innerHTML = res.auditLogs.map(l => `
+            <div class="list-item">
+              <div class="item-info">
+                <div class="item-title">${escapeHtml(l.action)}</div>
+                <div class="item-subtitle">${escapeHtml(l.targetType)}:${escapeHtml(l.targetId || '')} · ${new Date(l.createdAt).toLocaleTimeString()}</div>
+              </div>
+            </div>
+          `).join("");
+        } else {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-title">No audit logs yet</div>
+              <div class="empty-state-desc">Administrative actions will be recorded here.</div>
+            </div>
+          `;
+        }
+      } catch (err) {
+        container.innerHTML = `<p style="color: var(--danger); font-size: 0.8rem;">${escapeHtml(err.message)}</p>`;
+      }
+    }
 
     window.closeModal = function() {
       document.getElementById("modal-backdrop").classList.add("hidden");
