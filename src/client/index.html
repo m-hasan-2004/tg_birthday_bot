@@ -468,7 +468,6 @@
   <header>
     <div class="brand">
       <span style="font-weight: 700; font-size: 1rem; letter-spacing: -0.3px;">🎂 Reminders</span>
-      <span id="header-badge" class="brand-badge hidden">ADMIN</span>
     </div>
     <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
       <button class="btn btn-sm btn-square" onclick="openAddPersonModal()" title="Add Person">➕ Add Person</button>
@@ -570,37 +569,6 @@
         <button id="btn-save-profile" class="btn btn-full" onclick="saveProfile()">Save Profile</button>
       </div>
     </section>
-
-    <!-- View 5: Admin Panel (Automatically presented to Owner/Admin) -->
-    <section id="view-admin" class="tab-view hidden">
-      <div class="glass-card" style="margin-bottom: 12px;">
-        <div class="card-header">
-          <div class="card-title">🛡️ System Statistics (PostgreSQL)</div>
-          <button class="btn btn-secondary btn-sm" onclick="loadAdminStats()">Refresh</button>
-        </div>
-        <div id="admin-stats-grid" class="stats-grid">
-          <div class="stat-box"><div class="stat-label">Users</div><div id="astat-users" class="stat-number">0</div></div>
-          <div class="stat-box"><div class="stat-label">Contacts</div><div id="astat-people" class="stat-number">0</div></div>
-          <div class="stat-box"><div class="stat-label">Notes</div><div id="astat-notes" class="stat-number">0</div></div>
-          <div class="stat-box"><div class="stat-label">Reminders</div><div id="astat-reminders" class="stat-number">0</div></div>
-        </div>
-      </div>
-
-      <div class="glass-card" style="margin-bottom: 12px;">
-        <div class="card-header">
-          <div class="card-title">👥 User Management</div>
-        </div>
-        <input id="admin-user-search" class="input-control" type="text" placeholder="Search user by name or telegram ID..." style="margin-bottom: 10px; width: 100%;" oninput="debounce(loadAdminUsers, 400)()" />
-        <div id="admin-users-list" class="item-list"></div>
-      </div>
-
-      <div class="glass-card">
-        <div class="card-header">
-          <div class="card-title">📜 Audit Logs</div>
-        </div>
-        <div id="admin-audit-list" class="item-list"></div>
-      </div>
-    </section>
   </main>
 
   <!-- Bottom Navigation -->
@@ -620,10 +588,6 @@
     <button id="nav-tab-profile" class="nav-tab" onclick="showTab('profile')">
       <span class="icon">👤</span>
       <span>Profile</span>
-    </button>
-    <button id="nav-tab-admin" class="nav-tab hidden" onclick="showTab('admin')">
-      <span class="icon">🛡️</span>
-      <span>Admin</span>
     </button>
   </nav>
 
@@ -814,18 +778,6 @@
 
     async function initApp() {
       await ensureAuth();
-
-      // Show Admin tab in bottom nav if user is admin or owner
-      if (currentUser && (currentUser.role === "admin" || currentUser.role === "owner")) {
-        const adminTabBtn = document.getElementById("nav-tab-admin");
-        if (adminTabBtn) adminTabBtn.classList.remove("hidden");
-        const headerBadge = document.getElementById("header-badge");
-        if (headerBadge) {
-          headerBadge.classList.remove("hidden");
-          headerBadge.innerText = currentUser.role.toUpperCase();
-        }
-      }
-
       showTab("dashboard");
       // Preload all tabs in background
       Promise.all([loadPeople(), loadReminders(), loadProfile()]).catch(() => {});
@@ -852,7 +804,6 @@
       if (tabName === "people") loadPeople().catch(e => console.error("Error loading people:", e));
       if (tabName === "reminders") loadReminders().catch(e => console.error("Error loading reminders:", e));
       if (tabName === "profile") loadProfile().catch(e => console.error("Error loading profile:", e));
-      if (tabName === "admin") loadAdminDashboard().catch(e => console.error("Error loading admin:", e));
     };
 
     function renderDashboard(data) {
@@ -863,16 +814,6 @@
         if (data.stats) {
           document.getElementById("stat-people").innerText = data.stats.peopleCount;
           document.getElementById("stat-reminders").innerText = data.stats.remindersCount;
-        }
-
-        if (currentUser.role === "admin" || currentUser.role === "owner") {
-          const adminTabBtn = document.getElementById("nav-tab-admin");
-          if (adminTabBtn) adminTabBtn.classList.remove("hidden");
-          const headerBadge = document.getElementById("header-badge");
-          if (headerBadge) {
-            headerBadge.classList.remove("hidden");
-            headerBadge.innerText = currentUser.role.toUpperCase();
-          }
         }
 
         // Upcoming Birthdays
@@ -1677,95 +1618,6 @@
         btn.disabled = false;
       }
     };
-
-    // ADMIN PANEL
-    async function loadAdminDashboard() {
-      await loadAdminStats();
-      await loadAdminUsers();
-      await loadAdminAuditLogs();
-    }
-
-    async function loadAdminStats() {
-      try {
-        const data = await apiRequest("/api/admin/stats");
-        if (data.stats) {
-          document.getElementById("astat-users").innerText = data.stats.totalUsers;
-          document.getElementById("astat-people").innerText = data.stats.totalPeople;
-          document.getElementById("astat-notes").innerText = data.stats.totalNotes;
-          document.getElementById("astat-reminders").innerText = data.stats.totalReminders;
-        }
-      } catch (err) {
-        showToast("Admin access error: " + err.message, "error");
-      }
-    }
-
-    async function loadAdminUsers() {
-      const container = document.getElementById("admin-users-list");
-      const search = document.getElementById("admin-user-search")?.value || "";
-      try {
-        const res = await apiRequest(`/api/admin/users?search=${encodeURIComponent(search)}`);
-        if (res.users && res.users.length > 0) {
-          container.innerHTML = res.users.map(u => `
-            <div class="list-item">
-              <div class="item-info">
-                <div class="item-title">${escapeHtml(u.name)} (${u.role}) ${u.isDisabled ? '<span style="color: var(--danger);">[Disabled]</span>' : ''}</div>
-                <div class="item-subtitle">TG: ${u.telegramId} · Contacts: ${u.peopleCount} · Reminders: ${u.remindersCount}</div>
-              </div>
-              <div>
-                ${u.role === 'owner' ? '<span style="font-size: 0.75rem; color: var(--text-muted);">Owner</span>' :
-                  u.isDisabled ?
-                    `<button class="btn btn-sm btn-success" onclick="toggleUserDisabled('${u.id}', false)">Enable</button>` :
-                    `<button class="btn btn-sm btn-danger" onclick="toggleUserDisabled('${u.id}', true)">Disable</button>`
-                }
-              </div>
-            </div>
-          `).join("");
-        } else {
-          container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">No users found.</p>`;
-        }
-      } catch (err) {
-        container.innerHTML = `<p style="color: var(--danger);">${escapeHtml(err.message)}</p>`;
-      }
-    }
-
-    window.toggleUserDisabled = async function(userId, disable) {
-      const action = disable ? "disable" : "enable";
-      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-      try {
-        await apiRequest(`/api/admin/users/${userId}/${action}`, "POST");
-        showToast(`User ${action}d!`);
-        await loadAdminUsers();
-        await loadAdminStats();
-      } catch (err) {
-        showToast(err.message, "error");
-      }
-    };
-
-    async function loadAdminAuditLogs() {
-      const container = document.getElementById("admin-audit-list");
-      try {
-        const res = await apiRequest("/api/admin/audit-logs?limit=10");
-        if (res.auditLogs && res.auditLogs.length > 0) {
-          container.innerHTML = res.auditLogs.map(l => `
-            <div class="list-item">
-              <div class="item-info">
-                <div class="item-title">${escapeHtml(l.action)}</div>
-                <div class="item-subtitle">${escapeHtml(l.targetType)}:${escapeHtml(l.targetId || '')} · ${new Date(l.createdAt).toLocaleTimeString()}</div>
-              </div>
-            </div>
-          `).join("");
-        } else {
-          container.innerHTML = `
-            <div class="empty-state">
-              <div class="empty-state-title">No audit logs yet</div>
-              <div class="empty-state-desc">Administrative actions will be recorded here.</div>
-            </div>
-          `;
-        }
-      } catch (err) {
-        container.innerHTML = `<p style="color: var(--danger); font-size: 0.8rem;">${escapeHtml(err.message)}</p>`;
-      }
-    }
 
     window.closeModal = function() {
       document.getElementById("modal-backdrop").classList.add("hidden");

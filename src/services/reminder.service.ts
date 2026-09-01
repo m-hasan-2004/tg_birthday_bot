@@ -233,7 +233,18 @@ export class ReminderService {
     }
 
     if (existing.repeatType && existing.repeatType !== "none") {
-      const nextDate = getNextReminderOccurrence(existing.scheduledAt, existing.repeatType, tz);
+      const nowInTz = DateTime.now().setZone(tz);
+      const scheduledDt = DateTime.fromJSDate(existing.scheduledAt).setZone(tz);
+
+      // If scheduledAt is already in the future (e.g. automatically advanced by notification dispatcher),
+      // keep it as the next occurrence instead of skipping ahead an extra cycle.
+      let nextDate: Date | null = null;
+      if (scheduledDt > nowInTz) {
+        nextDate = existing.scheduledAt;
+      } else {
+        nextDate = getNextReminderOccurrence(existing.scheduledAt, existing.repeatType, tz);
+      }
+
       if (nextDate) {
         const [updated] = await this.database
           .update(reminders)

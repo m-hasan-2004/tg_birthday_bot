@@ -29,7 +29,6 @@ Built with **TypeScript**, **GrammY**, **Hono**, **PostgreSQL (Drizzle ORM)**, a
   - `👥 People`: Full contact directory with birthday badges and instant actions.
   - `⏰ Reminders`: Birthday reminder template chips (`🎯 On the day (0d)`, `⏰ 1d before`, `📅 3d before`, etc.) + Active reminders list with delete action.
   - `👤 Profile`: Edit Name and Birthday using standard mobile date pickers.
-  - `🛡️ Admin`: System statistics, audit logs, and user management (for Owner & Admins).
 - **Mobile-Native Birthday Picker**:
   - Integrates standard `<input type="date">` for native iOS rolling wheel and Android Material Date Picker on mobile devices.
 - **Comprehensive Notes Management**:
@@ -43,16 +42,15 @@ Built with **TypeScript**, **GrammY**, **Hono**, **PostgreSQL (Drizzle ORM)**, a
   - **Custom Reminders**: Formatted with `⏰ Reminder` followed by the reminder title.
 - **Exact Timing & Zero Offset Skew**:
   - All reminders and dates are parsed and compared with exact timezone accuracy (defaulting to **`Asia/Tehran`**).
-- **1-Minute Precision Cron & Self-Healing Trigger**:
-  - Automated GitHub Actions workflow (`.github/workflows/cron.yml`) looping every 60 seconds.
-  - Bot middleware & Web App background triggers automatically evaluate and dispatch due reminders.
-  - Public unblocked `/api/cron` endpoint for external cron providers (e.g. cron-job.org).
+- **1-Minute Precision Cron via Cron-Job.org**:
+  - Scheduled via free [cron-job.org](https://cron-job.org/) pinging `https://tg-birthday-bot.vercel.app/api/cron` every 1 minute.
+  - Bot middleware & Web App background triggers automatically evaluate and dispatch due reminders on user activity.
 
 ---
 
-## 🛡️ Admin Controls & Access
+## 🛡️ Admin Controls & Access (Telegram Bot `/admin`)
 
-Admin access is resolved directly from the authenticated Telegram account:
+Admin controls are managed directly and securely inside the Telegram Bot via `/admin`:
 
 ```env
 OWNER_TELEGRAM_ID=5138117035
@@ -62,7 +60,7 @@ OWNER_TELEGRAM_ID=5138117035
   - **Owner**: Full access; can manage admins, view system statistics, and inspect audit logs. Cannot be disabled or demoted.
   - **Admin**: Elevated privileges to manage users and view statistics.
   - **User**: Standard personal application access.
-- **Strict Role Isolation**: Admin endpoints (`/api/admin/*`) return `403 Forbidden` for standard users.
+- **Strict Role Isolation**: Admin commands are checked directly against authenticated Telegram IDs.
 
 ---
 
@@ -81,7 +79,6 @@ OWNER_TELEGRAM_ID=5138117035
 │   • POST /api/webhook       • Grammy Bot Middleware & State │
 │   • GET/POST /api/cron      • Notification Dispatcher Engine│
 │   • POST /api/auth/*        • Telegram InitData Auth        │
-│   • GET/POST /api/admin/*   • Admin Management & Audits     │
 │   • GET/POST /api/people    • Contact & Note CRUD           │
 │   • GET/POST /api/reminders • Unified Reminder Engine       │
 │   • GET /app                • Glassmorphic SPA Frontend     │
@@ -89,8 +86,8 @@ OWNER_TELEGRAM_ID=5138117035
                │                               │
                ▼                               ▼
      ┌───────────────────┐           ┌───────────────────┐
-     │  Neon PostgreSQL  │           │   GitHub Actions  │
-     │   (Drizzle ORM)   │           │ (1-Minute Cron)   │
+     │  Neon PostgreSQL  │           │   cron-job.org    │
+     │   (Drizzle ORM)   │           │ (1-Minute Ping)   │
      └───────────────────┘           └───────────────────┘
 ```
 
